@@ -3,12 +3,11 @@
 // 結果をタップすると詳細を再表示できる
 // 関連: purchase_result_storage.dart, home_screen.dart
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
+
+import '../../core/models/purchase_result.dart';
+import '../../core/storage/purchase_result_storage.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -18,7 +17,8 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  List<Map<String, dynamic>> _results = [];
+  final _storage = PurchaseResultStorage();
+  List<PurchaseResult> _results = [];
   bool _loading = true;
 
   @override
@@ -28,48 +28,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _loadHistory() async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final resultsDir = Directory('${directory.path}/results');
-      if (!await resultsDir.exists()) {
-        setState(() {
-          _results = [];
-          _loading = false;
-        });
-        return;
-      }
-
-      final files = await resultsDir.list().where((e) => e.path.endsWith('.json')).toList();
-      final results = <Map<String, dynamic>>[];
-      for (final file in files) {
-        try {
-          final json = jsonDecode(
-            await File(file.path).readAsString(),
-          ) as Map<String, dynamic>;
-          results.add(json);
-        } catch (_) {}
-      }
-      results.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));
-
-      setState(() {
-        _results = results;
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() => _loading = false);
-    }
+    final results = await _storage.listResults();
+    if (!mounted) return;
+    setState(() {
+      _results = results;
+      _loading = false;
+    });
   }
 
-  String _formatDate(String isoDate) {
-    try {
-      final dt = DateTime.parse(isoDate);
-      return '${dt.year}/${dt.month.toString().padLeft(2, '0')}'
-          '/${dt.day.toString().padLeft(2, '0')} '
-          '${dt.hour.toString().padLeft(2, '0')}:'
-          '${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return isoDate;
-    }
+  String _formatDate(DateTime dt) {
+    return '${dt.year}/${dt.month.toString().padLeft(2, '0')}'
+        '/${dt.day.toString().padLeft(2, '0')} '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -88,34 +59,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     itemCount: _results.length,
                     itemBuilder: (context, index) {
                       final result = _results[index];
-                      final title = result['candidateTitle'] as String? ?? '';
-                      final date =
-                          _formatDate(result['createdAt'] as String? ?? '');
-                      final confidence =
-                          result['confidenceLabel'] as String? ?? '';
-                      final keywords = (result['searchKeywords'] as List?)
-                              ?.cast<String>() ??
-                          [];
-                      final checks = (result['checkBeforeBuy'] as List?)
-                              ?.cast<String>() ??
-                          [];
-                      final summary =
-                          result['shopStaffSummary'] as String? ?? '';
-
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ExpansionTile(
                           title: Text(
-                            title,
+                            result.candidateTitle,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           subtitle: Text(
-                            date,
+                            _formatDate(result.createdAt),
                             style: const TextStyle(
                                 color: Colors.grey, fontSize: 12),
                           ),
-          trailing: Container(
+                          trailing: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -123,7 +80,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              confidence,
+                              result.confidenceLabel,
                               style: TextStyle(
                                   fontSize: 12, color: Colors.blue[700]),
                             ),
@@ -135,14 +92,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (keywords.isNotEmpty) ...[
+                                  if (result.searchKeywords.isNotEmpty) ...[
                                     const Text('検索ワード',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
                                             color: Colors.grey)),
                                     const SizedBox(height: 4),
-                                    ...keywords.map(
+                                    ...result.searchKeywords.map(
                                       (kw) => Padding(
                                         padding: const EdgeInsets.only(
                                             bottom: 4),
@@ -173,14 +130,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     ),
                                     const Divider(),
                                   ],
-                                  if (checks.isNotEmpty) ...[
+                                  if (result.checkBeforeBuy.isNotEmpty) ...[
                                     const Text('買う前チェック',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
                                             color: Colors.grey)),
                                     const SizedBox(height: 4),
-                                    ...checks.map(
+                                    ...result.checkBeforeBuy.map(
                                       (c) => Padding(
                                         padding: const EdgeInsets.only(
                                             bottom: 4),
@@ -202,7 +159,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           fontSize: 13,
                                           color: Colors.grey)),
                                   const SizedBox(height: 4),
-                                  Text(summary, style: const TextStyle(fontSize: 14)),
+                                  Text(result.shopStaffSummary,
+                                      style: const TextStyle(fontSize: 14)),
                                   const SizedBox(height: 8),
                                 ],
                               ),
