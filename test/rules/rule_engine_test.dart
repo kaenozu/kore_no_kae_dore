@@ -19,21 +19,12 @@ void main() {
     test(
         'bulb_full_view未撮影の場合、口金撮影指示（full_view）を返す', () {
       final evidence = EvidenceState(sessionId: sessionId);
-      // fullViewCaptured = false（デフォルト）
 
       final output = engine.process(evidence);
 
       expect(output.type, 'next_instruction');
       expect(output.requiredStep, 'full_view');
       expect(output.title, contains('電球全体'));
-    });
-
-    test('unknown_too_darkの場合、明るい場所での再撮影指示を返す', () {
-      final output = engine.handlePoorQuality('too_dark');
-
-      expect(output.type, 'next_instruction');
-      expect(output.title, contains('暗すぎます'));
-      expect(output.message, contains('明るい'));
     });
 
     test('3回失敗時に手動確認へ誘導する', () {
@@ -64,8 +55,6 @@ void main() {
     });
 
     test('PurchaseResultに禁止された断定表現が含まれない', () {
-      // 禁止表現リスト（8.3節）:
-      // 「これで確定です」「この商品を買えば必ず使えます」「100%判定」
       final evidence = EvidenceState(sessionId: sessionId);
       evidence.fullViewCaptured = true;
       evidence.baseViewCaptured = true;
@@ -81,7 +70,6 @@ void main() {
 
       expect(output.type, 'purchase_result');
 
-      // 禁止表現が含まれていないことを確認
       final allText = [
         output.title,
         output.message,
@@ -92,8 +80,45 @@ void main() {
       expect(allText, isNot(contains('100%判定')));
     });
 
+    test('手動確認が未完了の場合、manual_checkを返す', () {
+      final evidence = EvidenceState(sessionId: sessionId);
+      evidence.fullViewCaptured = true;
+      evidence.baseViewCaptured = true;
+      evidence.labelViewCaptured = true;
+      evidence.fixtureChecked = true;
+
+      final output = engine.process(evidence);
+
+      expect(output.type, 'manual_check');
+    });
+  });
+
+  group('RuleEngine.handlePoorQuality()', () {
+    test('too_darkの場合、明るい場所での再撮影指示を返す', () {
+      final output = engine.handlePoorQuality('too_dark');
+
+      expect(output.type, 'next_instruction');
+      expect(output.title, contains('暗すぎます'));
+      expect(output.message, contains('明るい'));
+    });
+
+    test('unknown_too_darkの場合、「暗すぎます」を返す', () {
+      final output = engine.handlePoorQuality('unknown_too_dark');
+
+      expect(output.type, 'next_instruction');
+      expect(output.title, contains('暗すぎます'));
+      expect(output.message, contains('明るい'));
+    });
+
     test('blurryの場合、ピント再調整指示を返す', () {
       final output = engine.handlePoorQuality('blurry');
+
+      expect(output.type, 'next_instruction');
+      expect(output.title, contains('ピント'));
+    });
+
+    test('unknown_blurryの場合、「ピントが合っていません」を返す', () {
+      final output = engine.handlePoorQuality('unknown_blurry');
 
       expect(output.type, 'next_instruction');
       expect(output.title, contains('ピント'));
@@ -106,17 +131,47 @@ void main() {
       expect(output.title, contains('遠すぎます'));
     });
 
-    test('手動確認が未完了の場合、manual_checkを返す', () {
-      final evidence = EvidenceState(sessionId: sessionId);
-      evidence.fullViewCaptured = true;
-      evidence.baseViewCaptured = true;
-      evidence.labelViewCaptured = true;
-      evidence.fixtureChecked = true;
-      // manualChecksの各項目はデフォルトで'unknown'
+    test('unknown_too_farの場合、「遠すぎます」を返す', () {
+      final output = engine.handlePoorQuality('unknown_too_far');
 
-      final output = engine.process(evidence);
+      expect(output.type, 'next_instruction');
+      expect(output.title, contains('遠すぎます'));
+    });
 
-      expect(output.type, 'manual_check');
+    test('未知のラベルはデフォルトメッセージにフォールバックする', () {
+      final output = engine.handlePoorQuality('unknown_other');
+
+      expect(output.type, 'next_instruction');
+      expect(output.title, contains('撮り直してください'));
+    });
+  });
+
+  group('ManualChecks.isComplete', () {
+    test('全てunknownの場合はfalse', () {
+      final checks = ManualChecks();
+
+      expect(checks.isComplete, false);
+    });
+
+    test('全て入力済みの場合はtrue', () {
+      final checks = ManualChecks(
+        baseSize: 'e26_candidate',
+        colorTone: 'bulb_color',
+        brightness: '60',
+        sealedFixture: 'no',
+        dimmer: 'no',
+      );
+
+      expect(checks.isComplete, true);
+    });
+
+    test('一部のみ入力の場合はfalse', () {
+      final checks = ManualChecks(
+        baseSize: 'e26_candidate',
+        colorTone: 'bulb_color',
+      );
+
+      expect(checks.isComplete, false);
     });
   });
 }

@@ -34,7 +34,7 @@ class SessionController extends ChangeNotifier {
   ClassificationResult? get lastClassification => _lastClassification;
 
   /// 新しいセッションを開始する
-  void startSession(String category) {
+  Future<void> startSession(String category) async {
     final now = DateTime.now();
     _session = CaptureSession(
       id: _uuid.v4(),
@@ -48,41 +48,38 @@ class SessionController extends ChangeNotifier {
     _lastOutput = null;
     _lastResult = null;
     _lastClassification = null;
-    _sessionStorage.saveSession(_session!);
+    await _sessionStorage.saveSession(_session!);
     notifyListeners();
   }
 
   /// 分類結果を処理してエビデンスを更新する
-  void processClassification(ClassificationResult result) {
+  Future<void> processClassification(ClassificationResult result) async {
     if (_evidence == null || _session == null) return;
 
     _lastClassification = result;
     final label = result.topLabel;
 
-    // 品質問題の分類
     if (label == 'unknown_too_dark' ||
         label == 'unknown_blurry' ||
         label == 'unknown_too_far') {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.handlePoorQuality(label);
       _session!.updatedAt = DateTime.now();
-      _sessionStorage.saveSession(_session!);
+      await _sessionStorage.saveSession(_session!);
       notifyListeners();
       return;
     }
 
-    // unknown_other も失敗扱い
     if (label == 'unknown_other') {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session!.failedAttempts);
       _session!.updatedAt = DateTime.now();
-      _sessionStorage.saveSession(_session!);
+      await _sessionStorage.saveSession(_session!);
       notifyListeners();
       return;
     }
 
-    // 正常系：ラベルに応じてエビデンスを更新
-    _session!.failedAttempts = 0; // 成功したのでリセット
+    _session!.failedAttempts = 0;
 
     switch (label) {
       case 'bulb_full_view':
@@ -102,8 +99,6 @@ class SessionController extends ChangeNotifier {
         _session!.currentStep = 'fixture_check';
         break;
       case 'bulb_package_view':
-        // パッケージ写真は全エビデンスが揃ったとみなす
-        // （簡易的には全部capturedにするが、手動確認は必要）
         _evidence!.fullViewCaptured = true;
         _evidence!.baseViewCaptured = true;
         _evidence!.labelViewCaptured = true;
@@ -113,18 +108,18 @@ class SessionController extends ChangeNotifier {
 
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session!.failedAttempts);
     _session!.updatedAt = DateTime.now();
-    _sessionStorage.saveSession(_session!);
+    await _sessionStorage.saveSession(_session!);
     notifyListeners();
   }
 
   /// 手動確認の値を更新する
-  void updateManualCheck({
+  Future<void> updateManualCheck({
     String? baseSize,
     String? colorTone,
     String? brightness,
     String? sealedFixture,
     String? dimmer,
-  }) {
+  }) async {
     if (_evidence == null) return;
 
     if (baseSize != null) _evidence!.manualChecks.baseSize = baseSize;
@@ -135,11 +130,10 @@ class SessionController extends ChangeNotifier {
 
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session?.failedAttempts ?? 0);
     _session!.updatedAt = DateTime.now();
-    _sessionStorage.saveSession(_session!);
+    await _sessionStorage.saveSession(_session!);
 
-    // 結果が生成された場合、PurchaseResultを作成
     if (_lastOutput!.type == 'purchase_result') {
-      _finalizeResult();
+      await _finalizeResult();
     }
 
     notifyListeners();
@@ -153,8 +147,7 @@ class SessionController extends ChangeNotifier {
           !_evidence!.labelViewCaptured ||
           !_evidence!.fixtureChecked);
 
-  /// 結果を確定して保存する
-  void _finalizeResult() {
+  Future<void> _finalizeResult() async {
     if (_evidence == null || _session == null) return;
 
     final checks = _evidence!.manualChecks;
@@ -214,17 +207,16 @@ class SessionController extends ChangeNotifier {
     _session!.resultId = _lastResult!.id;
     _session!.updatedAt = now;
 
-    // 保存
-    _sessionStorage.saveSession(_session!);
-    _resultStorage.saveResult(_lastResult!);
+    await _sessionStorage.saveSession(_session!);
+    await _resultStorage.saveResult(_lastResult!);
   }
 
   /// セッションを破棄する
-  void abandonSession() {
+  Future<void> abandonSession() async {
     if (_session != null) {
       _session!.status = 'abandoned';
       _session!.updatedAt = DateTime.now();
-      _sessionStorage.saveSession(_session!);
+      await _sessionStorage.saveSession(_session!);
     }
     _session = null;
     _evidence = null;
