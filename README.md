@@ -46,8 +46,9 @@ flutter build apk --release
 ```
 
 > **リリース署名について**
-> デフォルトでは debug 署名でビルドされます。
-> 実配布用の署名を行う場合は `android/key.properties` を作成してください。
+> 現在のGitHub Release APKは **debug署名（開発確認用）** です。
+> 本番配布（ストア公開）には至っていないため、当面はこの状態で運用します。
+> 将来ストア公開する場合は `android/key.properties` + GitHub Secrets でrelease署名に切り替えます。
 > 詳細は [Flutter 署名ガイド](https://docs.flutter.dev/deployment/android#signing-the-app) を参照。
 
 ## CI
@@ -61,9 +62,9 @@ flutter build apk --release
 ## 技術スタック
 
 - **Flutter** / Dart
-- **Jetpack Compose**（UI）
-- **Room**（データ保存 - Phase 3以降）
-- **画像分類**: Phase 2で TFLite + MediaPipe を予定
+- **image_picker**（カメラ・ギャラリー）
+- **path_provider** / JSONファイル保存
+- **画像分類**: Phase 2で TFLite + MediaPipe を予定（現状は MockClassifier）
 
 ## 注意事項
 

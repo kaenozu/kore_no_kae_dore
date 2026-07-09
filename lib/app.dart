@@ -72,8 +72,9 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
             switch (settings.name) {
               case '/home':
                 return HomeScreen(
-                  onStartBulb: () {
-                    _controller.startSession('bulb');
+                  onStartBulb: () async {
+                    await _controller.startSession('bulb');
+                    if (!context.mounted) return;
                     Navigator.of(context).pushNamed('/capture');
                   },
                   onHistory: () {

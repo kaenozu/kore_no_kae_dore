@@ -210,16 +210,24 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
     );
   }
 
-  void _onConfirm() {
-    widget.controller.updateManualCheck(
+  Future<void> _onConfirm() async {
+    await widget.controller.updateManualCheck(
       baseSize: _baseSize ?? widget.controller.evidence?.manualChecks.baseSize,
       colorTone: _colorTone ?? widget.controller.evidence?.manualChecks.colorTone,
       brightness: _brightness ?? widget.controller.evidence?.manualChecks.brightness,
       sealedFixture: _sealedFixture ?? widget.controller.evidence?.manualChecks.sealedFixture,
       dimmer: _dimmer ?? widget.controller.evidence?.manualChecks.dimmer,
     );
+    if (!mounted) return;
 
     final output = widget.controller.lastOutput;
+    if (output?.type == 'manual_check') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('未確認の項目があります')),
+      );
+      return;
+    }
+
     if (output?.type == 'purchase_result') {
       Navigator.pushNamedAndRemoveUntil(
         context,
@@ -227,7 +235,6 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
         (route) => route.settings.name == '/home',
       );
     } else {
-      // さらに必要な撮影があれば capture へ
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/capture',

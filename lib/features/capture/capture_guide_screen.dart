@@ -271,7 +271,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
       }
 
       final result = await _classifier.classify(picked.path);
-      widget.controller.processClassification(result);
+      await widget.controller.processClassification(result);
 
       if (!mounted) return;
 
