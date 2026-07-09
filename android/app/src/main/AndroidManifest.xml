@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- カメラ撮影に必要 -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- ギャラリー選択（Android 12以下）に必要 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Android 13以上は photo picker を使うため READ_MEDIA_IMAGES は不要 -->
     <application
         android:label="kore_no_kae_dore"
         android:name="${applicationName}"
