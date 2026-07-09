@@ -48,6 +48,7 @@ class SessionController extends ChangeNotifier {
     _lastOutput = null;
     _lastResult = null;
     _lastClassification = null;
+    _sessionStorage.saveSession(_session!);
     notifyListeners();
   }
 
@@ -65,6 +66,7 @@ class SessionController extends ChangeNotifier {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.handlePoorQuality(label);
       _session!.updatedAt = DateTime.now();
+      _sessionStorage.saveSession(_session!);
       notifyListeners();
       return;
     }
@@ -74,6 +76,7 @@ class SessionController extends ChangeNotifier {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session!.failedAttempts);
       _session!.updatedAt = DateTime.now();
+      _sessionStorage.saveSession(_session!);
       notifyListeners();
       return;
     }
@@ -110,6 +113,7 @@ class SessionController extends ChangeNotifier {
 
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session!.failedAttempts);
     _session!.updatedAt = DateTime.now();
+    _sessionStorage.saveSession(_session!);
     notifyListeners();
   }
 
@@ -131,6 +135,7 @@ class SessionController extends ChangeNotifier {
 
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session?.failedAttempts ?? 0);
     _session!.updatedAt = DateTime.now();
+    _sessionStorage.saveSession(_session!);
 
     // 結果が生成された場合、PurchaseResultを作成
     if (_lastOutput!.type == 'purchase_result') {

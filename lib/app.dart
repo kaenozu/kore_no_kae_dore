@@ -6,7 +6,6 @@
 import 'package:flutter/material.dart';
 import 'features/home/home_screen.dart';
 import 'features/capture/capture_guide_screen.dart';
-import 'features/analysis/analysis_instruction_screen.dart';
 import 'features/manual_check/manual_check_screen.dart';
 import 'features/result/purchase_result_screen.dart';
 import 'features/history/history_screen.dart';
@@ -41,34 +40,6 @@ class KoreNoKaeDoreApp extends StatelessWidget {
       },
     );
   }
-}
-
-/// ルートレベルでSessionControllerとナビゲーションを管理するStatefulWidget
-class _AppShell extends StatefulWidget {
-  final Widget child;
-
-  const _AppShell({required this.child});
-
-  @override
-  State<_AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends State<_AppShell> {
-  final _controller = SessionController();
-  final _debugLabelNotifier = ValueNotifier<String?>(null);
-
-  SessionController get controller => _controller;
-  ValueNotifier<String?> get debugLabelNotifier => _debugLabelNotifier;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _debugLabelNotifier.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// Home + History 用のラッパー（ルート直下でコントローラにアクセス）
@@ -114,8 +85,6 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                   controller: _controller,
                   debugLabelNotifier: _debugLabelNotifier,
                 );
-              case '/analysis':
-                return AnalysisInstructionScreen(controller: _controller);
               case '/manual_check':
                 return ManualCheckScreen(controller: _controller);
               case '/result':
