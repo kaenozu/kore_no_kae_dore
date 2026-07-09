@@ -254,6 +254,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
   }
 
   Future<void> _onCapture(ImageSource source) async {
+    setState(() => _isAnalyzing = true);
     try {
       final picked = await _picker.pickImage(
         source: source,
@@ -261,29 +262,30 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
         maxHeight: 1920,
       );
       if (picked == null) return;
-    } catch (_) {
-      // pickerが使えない環境でもモックで進める
-    }
 
-    setState(() => _isAnalyzing = true);
+      final debugLabel = widget.debugLabelNotifier.value;
+      if (debugLabel != null) {
+        _classifier.fixedLabel = debugLabel;
+      } else {
+        _classifier.fixedLabel = null;
+      }
 
-    final debugLabel = widget.debugLabelNotifier.value;
-    if (debugLabel != null) {
-      _classifier.fixedLabel = debugLabel;
-    } else {
-      _classifier.fixedLabel = null;
-    }
+      final result = await _classifier.classify(picked.path);
+      widget.controller.processClassification(result);
 
-    final result = await _classifier.classify('mock_path');
-    widget.controller.processClassification(result);
+      if (!mounted) return;
 
-    setState(() => _isAnalyzing = false);
-
-    if (!mounted) return;
-
-    final output = widget.controller.lastOutput;
-    if (output != null) {
-      _navigateToNext(context, output.type);
+      final output = widget.controller.lastOutput;
+      if (output != null) {
+        _navigateToNext(context, output.type);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('画像の取得に失敗しました: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
     }
   }
 
