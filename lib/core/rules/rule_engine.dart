@@ -78,14 +78,17 @@ class RuleEngine {
 
     switch (reason) {
       case 'too_dark':
+      case 'unknown_too_dark':
         title = '暗すぎます';
         message = '照明をつけるか、明るい場所で撮り直してください。';
         break;
       case 'blurry':
+      case 'unknown_blurry':
         title = 'ピントが合っていません';
         message = 'カメラを安定させ、ピントを合わせてから撮り直してください。';
         break;
       case 'too_far':
+      case 'unknown_too_far':
         title = '遠すぎます';
         message = 'もっと電球に近づいて撮り直してください。';
         break;

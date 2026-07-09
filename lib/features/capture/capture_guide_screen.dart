@@ -290,16 +290,18 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
   }
 
   void _navigateToNext(BuildContext context, String type) {
+    // 「手動で確認」はlastOutput有無に関わらず直接遷移
+    if (type == 'manual') {
+      Navigator.pushNamed(context, '/manual_check');
+      return;
+    }
+
     final output = widget.controller.lastOutput;
     if (output == null) return;
 
     switch (output.type) {
       case 'next_instruction':
-        if (output.requiredStep == 'fixture_check') {
-          Navigator.pushReplacementNamed(context, '/capture');
-        } else {
-          Navigator.pushReplacementNamed(context, '/capture');
-        }
+        Navigator.pushReplacementNamed(context, '/capture');
         break;
       case 'manual_check':
         Navigator.pushNamed(context, '/manual_check');
