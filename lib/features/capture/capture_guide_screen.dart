@@ -1,9 +1,10 @@
 // lib/features/capture/capture_guide_screen.dart
-// 撮影ガイド画面：現在の撮影ステップを表示し、撮影ボタンを提供
+// 撮影ガイド画面：現在の撮影ステップを表示し、撮影/画像選択ボタンを提供
 // MockClassifierを使ったデバッグ用ラベル選択機能付き
 // 関連: analysis_instruction_screen.dart, mock_classifier.dart
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/ml/mock_classifier.dart';
 import '../../core/session/session_controller.dart';
 
@@ -23,6 +24,7 @@ class CaptureGuideScreen extends StatefulWidget {
 
 class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
   final _classifier = MockClassifier();
+  final _picker = ImagePicker();
   bool _isAnalyzing = false;
 
   // 撮影ステップに応じたガイド情報
@@ -150,24 +152,46 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 撮影ボタン
-            SizedBox(
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _isAnalyzing ? null : _onCapture,
-                icon: _isAnalyzing
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.camera_alt, size: 28),
-                label: Text(
-                  _isAnalyzing ? '判定中...' : '撮影する',
-                  style: const TextStyle(fontSize: 18),
+            // 撮影/選択ボタン
+            if (_isAnalyzing)
+              SizedBox(
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: null,
+                  icon: const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  label: const Text('判定中...', style: TextStyle(fontSize: 18)),
                 ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _onCapture(ImageSource.camera),
+                        icon: const Icon(Icons.camera_alt, size: 28),
+                        label: const Text('撮影する', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 56,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _onCapture(ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library, size: 28),
+                        label: const Text('画像を選ぶ', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
             const SizedBox(height: 16),
 
             // 手動で進む
@@ -229,10 +253,20 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
     );
   }
 
-  Future<void> _onCapture() async {
+  Future<void> _onCapture(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+      if (picked == null) return;
+    } catch (_) {
+      // pickerが使えない環境でもモックで進める
+    }
+
     setState(() => _isAnalyzing = true);
 
-    // デバッグラベルが設定されていればそれを使う
     final debugLabel = widget.debugLabelNotifier.value;
     if (debugLabel != null) {
       _classifier.fixedLabel = debugLabel;
@@ -240,7 +274,6 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
       _classifier.fixedLabel = null;
     }
 
-    // ここでは実際の画像は使わず、モックで分類
     final result = await _classifier.classify('mock_path');
     widget.controller.processClassification(result);
 
