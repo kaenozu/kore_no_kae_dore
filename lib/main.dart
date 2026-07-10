@@ -1,14 +1,17 @@
 // lib/main.dart
 // アプリケーションエントリポイント
+// エラーバウンダリ設定
 // 関連: app.dart
 
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+
 import 'app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     debugPrint('${details.exception}\n${details.stack}');
