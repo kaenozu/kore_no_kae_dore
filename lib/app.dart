@@ -1,16 +1,20 @@
 // lib/app.dart
 // アプリケーションのルートウィジェット
-// 画面遷移とSessionControllerの管理を担当。起動時に進行中セッションを確認
+// 画面遷移とSessionControllerの管理を担当
+// 起動時にGeminiClassifierを試行し、失敗時はMockClassifierにフォールバック
 // 関連: 全画面
 
 import 'package:flutter/material.dart';
-import 'features/home/home_screen.dart';
-import 'features/capture/capture_guide_screen.dart';
-import 'features/manual_check/manual_check_screen.dart';
-import 'features/result/purchase_result_screen.dart';
-import 'features/history/history_screen.dart';
+
+import 'core/ml/classifier.dart';
+import 'core/ml/gemini_classifier.dart';
 import 'core/ml/mock_classifier.dart';
 import 'core/session/session_controller.dart';
+import 'features/capture/capture_guide_screen.dart';
+import 'features/history/history_screen.dart';
+import 'features/home/home_screen.dart';
+import 'features/manual_check/manual_check_screen.dart';
+import 'features/result/purchase_result_screen.dart';
 
 class KoreNoKaeDoreApp extends StatelessWidget {
   const KoreNoKaeDoreApp({super.key});
@@ -53,14 +57,25 @@ class _HomeWithHistory extends StatefulWidget {
 
 class _HomeWithHistoryState extends State<_HomeWithHistory> {
   final _controller = SessionController();
-  final _classifier = MockClassifier();
+  Classifier _classifier = MockClassifier();
   final _debugLabelNotifier = ValueNotifier<String?>(null);
   bool _hasResumeSession = false;
 
   @override
   void initState() {
     super.initState();
+    _tryInitGemini();
     _checkResumeSession();
+  }
+
+  Future<void> _tryInitGemini() async {
+    final gemini = GeminiClassifier();
+    try {
+      await gemini.init();
+      _classifier = gemini;
+    } catch (e) {
+      debugPrint('Gemini unavailable, using MockClassifier: $e');
+    }
   }
 
   Future<void> _checkResumeSession() async {
