@@ -3,6 +3,47 @@
 // 9クラスの分類ラベルとそのスコアを持つ
 // 関連: evidence_state.dart, rule_engine.dart
 
+enum ImageLabel {
+  bulbFullView,
+  bulbBaseView,
+  bulbLabelSideView,
+  fixtureSocketView,
+  bulbPackageView,
+  unknownTooDark,
+  unknownBlurry,
+  unknownTooFar,
+  unknownOther;
+
+  String get value => switch (this) {
+    ImageLabel.bulbFullView => 'bulb_full_view',
+    ImageLabel.bulbBaseView => 'bulb_base_view',
+    ImageLabel.bulbLabelSideView => 'bulb_label_side_view',
+    ImageLabel.fixtureSocketView => 'fixture_socket_view',
+    ImageLabel.bulbPackageView => 'bulb_package_view',
+    ImageLabel.unknownTooDark => 'unknown_too_dark',
+    ImageLabel.unknownBlurry => 'unknown_blurry',
+    ImageLabel.unknownTooFar => 'unknown_too_far',
+    ImageLabel.unknownOther => 'unknown_other',
+  };
+
+  static ImageLabel fromString(String s) => switch (s) {
+    'bulb_full_view' => ImageLabel.bulbFullView,
+    'bulb_base_view' => ImageLabel.bulbBaseView,
+    'bulb_label_side_view' => ImageLabel.bulbLabelSideView,
+    'fixture_socket_view' => ImageLabel.fixtureSocketView,
+    'bulb_package_view' => ImageLabel.bulbPackageView,
+    'unknown_too_dark' => ImageLabel.unknownTooDark,
+    'unknown_blurry' => ImageLabel.unknownBlurry,
+    'unknown_too_far' => ImageLabel.unknownTooFar,
+    _ => ImageLabel.unknownOther,
+  };
+
+  bool get isPoorQuality => switch (this) {
+    ImageLabel.unknownTooDark || ImageLabel.unknownBlurry || ImageLabel.unknownTooFar => true,
+    _ => false,
+  };
+}
+
 class Prediction {
   final String label;
   final double score;
@@ -32,8 +73,10 @@ class ClassificationResult {
     required this.createdAt,
   });
 
-  String get topLabel =>
-      predictions.isNotEmpty ? predictions.first.label : 'unknown_other';
+  ImageLabel get topLabel =>
+      predictions.isNotEmpty
+          ? ImageLabel.fromString(predictions.first.label)
+          : ImageLabel.unknownOther;
 
   double get topScore =>
       predictions.isNotEmpty ? predictions.first.score : 0.0;

@@ -9,6 +9,7 @@ import 'features/capture/capture_guide_screen.dart';
 import 'features/manual_check/manual_check_screen.dart';
 import 'features/result/purchase_result_screen.dart';
 import 'features/history/history_screen.dart';
+import 'core/ml/mock_classifier.dart';
 import 'core/session/session_controller.dart';
 
 class KoreNoKaeDoreApp extends StatelessWidget {
@@ -52,6 +53,7 @@ class _HomeWithHistory extends StatefulWidget {
 
 class _HomeWithHistoryState extends State<_HomeWithHistory> {
   final _controller = SessionController();
+  final _classifier = MockClassifier();
   final _debugLabelNotifier = ValueNotifier<String?>(null);
 
   @override
@@ -84,6 +86,7 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
               case '/capture':
                 return CaptureGuideScreen(
                   controller: _controller,
+                  classifier: _classifier,
                   debugLabelNotifier: _debugLabelNotifier,
                 );
               case '/manual_check':

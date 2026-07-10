@@ -4,10 +4,10 @@
 // 関連: purchase_result_storage.dart, home_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/models/purchase_result.dart';
 import '../../core/storage/purchase_result_storage.dart';
+import '../../shared/widgets/copyable_text.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -103,29 +103,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                       (kw) => Padding(
                                         padding: const EdgeInsets.only(
                                             bottom: 4),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(kw,
-                                                  style:
-                                                      const TextStyle(fontSize: 14)),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.copy,
-                                                  size: 18),
-                                              onPressed: () {
-                                                Clipboard.setData(
-                                                    ClipboardData(text: kw));
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                      content:
-                                                          Text('コピーしました')),
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        ),
+                                        child: CopyableText(text: kw),
                                       ),
                                     ),
                                     const Divider(),

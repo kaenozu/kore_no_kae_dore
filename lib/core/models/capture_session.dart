@@ -3,11 +3,39 @@
 // 1セッション = 1回の「これの替えどれ？」フロー全体
 // 関連: evidence_state.dart, purchase_result.dart
 
+enum StepName {
+  fullView,
+  baseView,
+  labelView,
+  fixtureCheck,
+  manualCheck,
+  result;
+
+  String get value => switch (this) {
+    StepName.fullView => 'full_view',
+    StepName.baseView => 'base_view',
+    StepName.labelView => 'label_view',
+    StepName.fixtureCheck => 'fixture_check',
+    StepName.manualCheck => 'manual_check',
+    StepName.result => 'result',
+  };
+
+  static StepName fromString(String s) => switch (s) {
+    'full_view' => StepName.fullView,
+    'base_view' => StepName.baseView,
+    'label_view' => StepName.labelView,
+    'fixture_check' => StepName.fixtureCheck,
+    'manual_check' => StepName.manualCheck,
+    'result' => StepName.result,
+    _ => StepName.fullView,
+  };
+}
+
 class CaptureSession {
   final String id;
-  final String category; // "bulb"
-  String status; // "in_progress" | "completed" | "abandoned"
-  String currentStep; // "full_view" | "base_view" | "label_view" | "fixture_check" | "manual_check" | "result"
+  final String category;
+  String status;
+  StepName currentStep;
   final DateTime createdAt;
   DateTime updatedAt;
   String? resultId;
@@ -28,7 +56,7 @@ class CaptureSession {
         'id': id,
         'category': category,
         'status': status,
-        'currentStep': currentStep,
+        'currentStep': currentStep.value,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
         'resultId': resultId,
@@ -39,7 +67,7 @@ class CaptureSession {
         id: json['id'] as String,
         category: json['category'] as String,
         status: json['status'] as String,
-        currentStep: json['currentStep'] as String,
+        currentStep: StepName.fromString(json['currentStep'] as String),
         createdAt: DateTime.parse(json['createdAt'] as String),
         updatedAt: DateTime.parse(json['updatedAt'] as String),
         resultId: json['resultId'] as String?,

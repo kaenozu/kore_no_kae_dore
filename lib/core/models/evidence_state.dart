@@ -3,34 +3,49 @@
 // どの角度が撮影済みか、手動確認の値は何かを保持する
 // 関連: rule_engine.dart, manual_check_screen.dart
 
+class Mc {
+  static const unknown = 'unknown';
+  static const e26Candidate = 'e26_candidate';
+  static const e17Candidate = 'e17_candidate';
+  static const userSelectedE26 = 'user_selected_e26';
+  static const userSelectedE17 = 'user_selected_e17';
+  static const bulbColor = 'bulb_color';
+  static const neutralWhite = 'neutral_white';
+  static const daylight = 'daylight';
+  static const sealedYes = 'yes';
+  static const sealedNo = 'no';
+  static const dimmerYes = 'yes';
+  static const dimmerNo = 'no';
+}
+
 class ManualChecks {
-  String baseSize; // "unknown" | "e26_candidate" | "e17_candidate" | "user_selected_e26" | "user_selected_e17"
-  String colorTone; // "unknown" | "bulb_color" | "neutral_white" | "daylight"
-  String brightness; // "unknown" | "40" | "60" | "100"
-  String sealedFixture; // "unknown" | "yes" | "no"
-  String dimmer; // "unknown" | "yes" | "no"
+  String baseSize; // Mc.unknown | Mc.e26Candidate | Mc.e17Candidate | ...
+  String colorTone; // Mc.unknown | Mc.bulbColor | Mc.neutralWhite | Mc.daylight
+  String brightness; // Mc.unknown | "40" | "60" | "100"
+  String sealedFixture; // Mc.unknown | Mc.sealedYes | Mc.sealedNo
+  String dimmer; // Mc.unknown | Mc.dimmerYes | Mc.dimmerNo
 
   ManualChecks({
-    this.baseSize = 'unknown',
-    this.colorTone = 'unknown',
-    this.brightness = 'unknown',
-    this.sealedFixture = 'unknown',
-    this.dimmer = 'unknown',
+    this.baseSize = Mc.unknown,
+    this.colorTone = Mc.unknown,
+    this.brightness = Mc.unknown,
+    this.sealedFixture = Mc.unknown,
+    this.dimmer = Mc.unknown,
   });
 
   bool get isComplete =>
-      baseSize != 'unknown' &&
-      colorTone != 'unknown' &&
-      brightness != 'unknown' &&
-      sealedFixture != 'unknown' &&
-      dimmer != 'unknown';
+      baseSize != Mc.unknown &&
+      colorTone != Mc.unknown &&
+      brightness != Mc.unknown &&
+      sealedFixture != Mc.unknown &&
+      dimmer != Mc.unknown;
 
   int get unknownCount =>
-      (baseSize == 'unknown' ? 1 : 0) +
-      (colorTone == 'unknown' ? 1 : 0) +
-      (brightness == 'unknown' ? 1 : 0) +
-      (sealedFixture == 'unknown' ? 1 : 0) +
-      (dimmer == 'unknown' ? 1 : 0);
+      (baseSize == Mc.unknown ? 1 : 0) +
+      (colorTone == Mc.unknown ? 1 : 0) +
+      (brightness == Mc.unknown ? 1 : 0) +
+      (sealedFixture == Mc.unknown ? 1 : 0) +
+      (dimmer == Mc.unknown ? 1 : 0);
 
   Map<String, dynamic> toJson() => {
         'baseSize': baseSize,
@@ -67,11 +82,6 @@ class EvidenceState {
     this.fixtureChecked = false,
     ManualChecks? manualChecks,
   }) : manualChecks = manualChecks ?? ManualChecks();
-
-  bool get hasPoorQuality =>
-      manualChecks.baseSize == 'unknown' &&
-      manualChecks.colorTone == 'unknown' &&
-      manualChecks.brightness == 'unknown';
 
   Map<String, dynamic> toJson() => {
         'sessionId': sessionId,

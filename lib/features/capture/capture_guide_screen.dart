@@ -1,20 +1,24 @@
 // lib/features/capture/capture_guide_screen.dart
 // 撮影ガイド画面：現在の撮影ステップを表示し、撮影/画像選択ボタンを提供
 // MockClassifierを使ったデバッグ用ラベル選択機能付き
-// 関連: analysis_instruction_screen.dart, mock_classifier.dart
+// 関連: mock_classifier.dart
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../core/ml/mock_classifier.dart';
+import '../../core/ml/classifier.dart';
+import '../../core/models/capture_session.dart';
+import '../../core/models/rule_engine_output.dart';
 import '../../core/session/session_controller.dart';
 
 class CaptureGuideScreen extends StatefulWidget {
   final SessionController controller;
+  final Classifier classifier;
   final ValueNotifier<String?> debugLabelNotifier;
 
   const CaptureGuideScreen({
     super.key,
     required this.controller,
+    required this.classifier,
     required this.debugLabelNotifier,
   });
 
@@ -23,31 +27,30 @@ class CaptureGuideScreen extends StatefulWidget {
 }
 
 class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
-  final _classifier = MockClassifier();
   final _picker = ImagePicker();
   bool _isAnalyzing = false;
 
   // 撮影ステップに応じたガイド情報
   static const _stepGuides = {
-    'full_view': _GuideInfo(
+    StepName.fullView: _GuideInfo(
       stepLabel: 'ステップ 1/3',
       title: '電球全体を撮影',
       description: '電球全体が写るように、電球から20〜30cm離れて撮影しましょう。',
       instruction: '口金のサイズと電球の形状を確認します',
     ),
-    'base_view': _GuideInfo(
+    StepName.baseView: _GuideInfo(
       stepLabel: 'ステップ 2/3',
       title: '口金部分を撮影',
       description: '口金（金属部分）が画面いっぱいになるように近づけて撮影しましょう。',
       instruction: 'E26/E17など口金サイズを確認します',
     ),
-    'label_view': _GuideInfo(
+    StepName.labelView: _GuideInfo(
       stepLabel: 'ステップ 3/3',
       title: '側面の印字を撮影',
       description: '電球の側面にある型番や仕様の印字を撮影しましょう。',
       instruction: '明るさや光色の手がかりを得ます',
     ),
-    'fixture_check': _GuideInfo(
+    StepName.fixtureCheck: _GuideInfo(
       stepLabel: '器具確認',
       title: '照明器具を確認',
       description: '照明器具の状態を確認してください。',
@@ -58,8 +61,8 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
   @override
   Widget build(BuildContext context) {
     final session = widget.controller.session;
-    final step = session?.currentStep ?? 'full_view';
-    final guide = _stepGuides[step] ?? _stepGuides['full_view']!;
+    final step = session?.currentStep ?? StepName.fullView;
+    final guide = _stepGuides[step] ?? _stepGuides[StepName.fullView]!;
 
     return Scaffold(
       appBar: AppBar(title: const Text('撮影ガイド')),
@@ -198,15 +201,20 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
             TextButton(
               onPressed: _isAnalyzing
                   ? null
-                  : () => _navigateToNext(context, 'manual'),
+                  : () => Navigator.pushNamed(context, '/manual_check'),
               child: const Text('写真ではうまく撮れない → 手動で確認'),
             ),
-            if (widget.controller.lastOutput?.type == 'next_instruction' &&
+            if (widget.controller.lastOutput?.type == OutputType.nextInstruction &&
                 widget.controller.lastOutput?.requiredStep != null &&
-                step != widget.controller.lastOutput!.requiredStep) ...[
+                step.value != widget.controller.lastOutput!.requiredStep) ...[
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => _navigateToNext(context, 'next'),
+                onPressed: () {
+                  final output = widget.controller.lastOutput;
+                  if (output != null) {
+                    _navigateToNextFromOutput(context, output);
+                  }
+                },
                 child: const Text('撮影済み → 次に進む'),
               ),
             ],
@@ -264,20 +272,18 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
       if (picked == null) return;
 
       final debugLabel = widget.debugLabelNotifier.value;
-      if (debugLabel != null) {
-        _classifier.fixedLabel = debugLabel;
-      } else {
-        _classifier.fixedLabel = null;
+      if (widget.classifier is FixedLabelMixin) {
+        (widget.classifier as FixedLabelMixin).fixedLabel = debugLabel;
       }
 
-      final result = await _classifier.classify(picked.path);
+      final result = await widget.classifier.classify(picked.path);
       await widget.controller.processClassification(result);
 
       if (!mounted) return;
 
       final output = widget.controller.lastOutput;
       if (output != null) {
-        _navigateToNext(context, output.type);
+        _navigateToNextFromOutput(context, output);
       }
     } catch (e) {
       if (!mounted) return;
@@ -289,24 +295,15 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
     }
   }
 
-  void _navigateToNext(BuildContext context, String type) {
-    // 「手動で確認」はlastOutput有無に関わらず直接遷移
-    if (type == 'manual') {
-      Navigator.pushNamed(context, '/manual_check');
-      return;
-    }
-
-    final output = widget.controller.lastOutput;
-    if (output == null) return;
-
+  void _navigateToNextFromOutput(BuildContext context, RuleEngineOutput output) {
     switch (output.type) {
-      case 'next_instruction':
+      case OutputType.nextInstruction:
         Navigator.pushReplacementNamed(context, '/capture');
         break;
-      case 'manual_check':
+      case OutputType.manualCheck:
         Navigator.pushNamed(context, '/manual_check');
         break;
-      case 'purchase_result':
+      case OutputType.purchaseResult:
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/result',
