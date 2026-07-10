@@ -10,12 +10,14 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback onStartBulb;
   final VoidCallback onHistory;
   final VoidCallback? onResume;
+  final VoidCallback? onStartFresh;
 
   const HomeScreen({
     super.key,
     required this.onStartBulb,
     required this.onHistory,
     this.onResume,
+    this.onStartFresh,
   });
 
   @override
@@ -23,15 +25,27 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _resumeDialogShown = false;
+
   @override
   void initState() {
     super.initState();
-    if (widget.onResume != null) {
+    // initState時点で既にonResumeがある場合（_checkResumeSessionが高速完了した場合）
+    if (widget.onResume != null && !_resumeDialogShown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showResumeDialog());
+    }
+  }
+
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.onResume == null && widget.onResume != null && !_resumeDialogShown) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showResumeDialog());
     }
   }
 
   void _showResumeDialog() {
+    _resumeDialogShown = true;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -41,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
+              // 既存進行中セッションを破棄して新規開始
+              widget.onStartFresh?.call();
             },
             child: const Text('新しく始める'),
           ),

@@ -129,5 +129,50 @@ void main() {
 
       expect(find.text('続きから始めますか？'), findsNothing);
     });
+
+    testWidgets('後からonResumeが設定された場合に復元ダイアログが表示される', (tester) async {
+      // 初期表示は onResume == null
+      await tester.pumpWidget(_wrap(HomeScreen(
+        onStartBulb: () {},
+        onHistory: () {},
+      )));
+      await tester.pump();
+      expect(find.text('続きから始めますか？'), findsNothing);
+
+      // 後から onResume が設定される（_checkResumeSession完了を模擬）
+      await tester.pumpWidget(_wrap(HomeScreen(
+        onStartBulb: () {},
+        onHistory: () {},
+        onResume: () {},
+        onStartFresh: () {},
+      )));
+      await tester.pump();
+
+      expect(find.text('続きから始めますか？'), findsOneWidget);
+    });
+
+    testWidgets('復元ダイアログが二重表示されない', (tester) async {
+      // 一度表示されたら
+      await tester.pumpWidget(_wrap(HomeScreen(
+        onStartBulb: () {},
+        onHistory: () {},
+        onResume: () {},
+        onStartFresh: () {},
+      )));
+      await tester.pump();
+
+      expect(find.text('続きから始めますか？'), findsOneWidget);
+
+      // 再度同じonResumeで再buildしてもダイアログは1回だけ
+      await tester.pumpWidget(_wrap(HomeScreen(
+        onStartBulb: () {},
+        onHistory: () {},
+        onResume: () {},
+        onStartFresh: () {},
+      )));
+      await tester.pump();
+
+      expect(find.text('続きから始めますか？'), findsOneWidget);
+    });
   });
 }

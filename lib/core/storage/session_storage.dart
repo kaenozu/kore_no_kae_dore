@@ -6,6 +6,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/capture_session.dart';
@@ -40,7 +41,8 @@ class SessionStorage {
       if (!await file.exists()) return null;
       final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       return CaptureSession.fromJson(json);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('SessionStorage.loadSession: $e');
       return null;
     }
   }
@@ -52,7 +54,8 @@ class SessionStorage {
       if (!await file.exists()) return null;
       final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       return EvidenceState.fromJson(json);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('SessionStorage.loadEvidence: $e');
       return null;
     }
   }
@@ -70,11 +73,14 @@ class SessionStorage {
             await File(file.path).readAsString(),
           ) as Map<String, dynamic>;
           sessions.add(CaptureSession.fromJson(json));
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('SessionStorage.listSessions: skipping $file ($e)');
+        }
       }
       sessions.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       return sessions;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('SessionStorage.listSessions: $e');
       return [];
     }
   }
@@ -84,7 +90,8 @@ class SessionStorage {
     final sessions = await listSessions();
     try {
       return sessions.firstWhere((s) => s.status == 'in_progress');
-    } catch (_) {
+    } catch (e) {
+      debugPrint('SessionStorage.findLatestInProgress: $e');
       return null;
     }
   }
@@ -100,6 +107,8 @@ class SessionStorage {
       if (await evidenceFile.exists()) {
         await evidenceFile.delete();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('SessionStorage.deleteSession: $e');
+    }
   }
 }

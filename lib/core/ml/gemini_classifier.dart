@@ -1,6 +1,7 @@
 // lib/core/ml/gemini_classifier.dart
 // Google AI Studio（Gemini API）を使った画像分類
-// 無料枠（レート制限あり）で動作。APIキーは --dart-define で注入
+// 注意: 現在の google_generative_ai SDK は暫定。将来は公式推奨SDK/Proxy構成へ移行
+// APIキーは --dart-define で注入。APK/IPAにキーが埋め込まれるため本番公開時はProxy必須
 // フォールバックチェーンで複数モデルを試行する
 // 関連: classifier.dart, app.dart
 
@@ -10,9 +11,21 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:uuid/uuid.dart';
+import 'package:mime/mime.dart' as mime_pkg;
 
 import '../models/classification_result.dart';
 import 'classifier.dart';
+
+/// Gemini API利用可能モデル名の定数リスト
+/// 安定モデルを優先し、previewモデルは最後に試行
+class GeminiModelNames {
+  static const List<String> candidates = [
+    'gemini-2.5-flash-preview', // 安定版を優先
+    'gemini-3-flash-preview',   // 高速
+    'gemini-3.1-pro-preview',   // 最新
+  ];
+  static const String unknown = 'unknown';
+}
 
 /// Google AI Gemini APIを使った画像分類器
 ///
@@ -22,20 +35,15 @@ import 'classifier.dart';
 /// 呼び出し元で MockClassifier にフォールバックする。
 ///
 /// フォールバックチェーン（init時に順に試行）:
-/// 1. gemini-3.1-pro-preview (最新)
-/// 2. gemini-3-flash-preview (高速)
-/// 3. gemini-2.5-flash-preview (安定版)
+/// {@macro GeminiModelNames.candidates}
 class GeminiClassifier extends Classifier with FixedLabelMixin {
-  static const _candidates = [
-    'gemini-3.1-pro-preview',
-    'gemini-3-flash-preview',
-    'gemini-2.5-flash-preview',
-  ];
+  static const _candidates = GeminiModelNames.candidates;
 
   GenerativeModel? _model;
   String? _activeModel;
 
   bool get isReady => _model != null;
+  String get activeModel => _activeModel ?? GeminiModelNames.unknown;
 
   /// 疎通確認を兼ねて利用可能なモデルを探す。
   /// 全て失敗した場合は [ClassifierInitException] を throw。
@@ -87,6 +95,7 @@ class GeminiClassifier extends Classifier with FixedLabelMixin {
       return _buildResult(ImageLabel.unknownOther.value, 0.0);
     }
     final imageBytes = await file.readAsBytes();
+    final mimeType = _detectMime(imagePath);
 
     final prompt = '''
 あなたは電球の写真を分析するアシスタントです。
@@ -113,7 +122,7 @@ JSON形式で回答してください:
     final resp = await _model!.generateContent([
       Content.multi([
         TextPart(prompt),
-        DataPart('image/jpeg', imageBytes),
+        DataPart(mimeType, imageBytes),
       ]),
     ]).timeout(const Duration(seconds: 30));
 
@@ -125,27 +134,47 @@ JSON形式で回答してください:
     return _parseResponse(text);
   }
 
+  /// ファイルパスからMIMEタイプを推定する
+  String _detectMime(String imagePath) {
+    final guessed = mime_pkg.lookupMimeType(imagePath);
+    return guessed ?? 'image/jpeg';
+  }
+
+  /// Gemini応答からJSONを安全にパースする
   ClassificationResult _parseResponse(String raw) {
     try {
       final json = _extractJson(raw);
-      final label = json['label'] as String? ?? ImageLabel.unknownOther.value;
+      final rawLabel = json['label'] as String? ?? ImageLabel.unknownOther.value;
+      // ImageLabel.fromStringで正規化（未知ラベルはunknownOtherに落ちる）
+      final label = ImageLabel.fromString(rawLabel);
       final rawScore = (json['score'] as num?)?.toDouble() ?? 0.0;
       final score = rawScore.clamp(0.0, 1.0);
-      return _buildResult(label, score);
+      return _buildResult(label.value, score);
     } catch (e) {
       debugPrint('GeminiClassifier: failed to parse response ($e)');
-      debugPrint('GeminiClassifier: raw response: $raw');
+      // raw responseはdebugのみ、本番では出さない
       return _buildResult(ImageLabel.unknownOther.value, 0.0);
     }
   }
 
-  /// ```json ... ``` コードブロックや余分なテキストを除去してJSONを抽出
+  /// ```json ... ``` コードブロックや余分なテキストを除去してJSONを抽出。
+  /// コードブロックがあればその中身を、なければ最初の { から最後の } までを抽出する。
   Map<String, dynamic> _extractJson(String text) {
     final stripped = text.trim();
+    // まずコードブロックを探す
     final codeBlockMatch =
         RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```').firstMatch(stripped);
-    final jsonStr = codeBlockMatch?.group(1) ?? stripped;
-    return jsonDecode(jsonStr) as Map<String, dynamic>;
+    if (codeBlockMatch != null) {
+      return jsonDecode(codeBlockMatch.group(1)!.trim()) as Map<String, dynamic>;
+    }
+    // コードブロックがなければ最初の { から最後の } までを抽出
+    final firstBrace = stripped.indexOf('{');
+    final lastBrace = stripped.lastIndexOf('}');
+    if (firstBrace != -1 && lastBrace > firstBrace) {
+      return jsonDecode(stripped.substring(firstBrace, lastBrace + 1)) as Map<String, dynamic>;
+    }
+    // どちらも失敗 → そのままデコード（最後の手段、エラー時はcatchで処理）
+    return jsonDecode(stripped) as Map<String, dynamic>;
   }
 
   ClassificationResult _buildResult(String label, double score) {
@@ -156,7 +185,7 @@ JSON形式で回答してください:
     return ClassificationResult(
       id: const Uuid().v4(),
       imageId: const Uuid().v4(),
-      modelVersion: _activeModel ?? 'unknown',
+      modelVersion: _activeModel ?? GeminiModelNames.unknown,
       predictions: predictions,
       createdAt: DateTime.now(),
     );

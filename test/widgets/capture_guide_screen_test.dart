@@ -65,11 +65,13 @@ void main() {
       final controller = StubSessionController(session: session);
       controller.testLastOutput = lastOutput;
       final classifier = StubClassifier();
+      final classifierStatus = ValueNotifier<String>('AI判定: Mock');
       final debugNotifier = ValueNotifier<String?>(null);
 
       await tester.pumpWidget(_wrap(CaptureGuideScreen(
         controller: controller,
         classifier: classifier,
+        classifierStatus: classifierStatus,
         debugLabelNotifier: debugNotifier,
       )));
       await tester.pump();

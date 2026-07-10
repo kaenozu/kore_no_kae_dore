@@ -137,6 +137,10 @@ class SessionController {
     if (sealedFixture != null) _evidence!.manualChecks.sealedFixture = sealedFixture;
     if (dimmer != null) _evidence!.manualChecks.dimmer = dimmer;
 
+    // 手動確認が完了したらfailedAttemptsをリセットしてpurchaseResultに進める
+    if (_evidence!.manualChecks.isComplete) {
+      _session!.failedAttempts = 0;
+    }
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session?.failedAttempts ?? 0);
     _session!.updatedAt = DateTime.now();
     await storage.saveSession(_session!);
@@ -151,11 +155,11 @@ class SessionController {
     if (_evidence == null || _session == null) return;
 
     final checks = _evidence!.manualChecks;
-    final baseStr = checks.baseSize == Mc.unknown
-        ? 'E26'
-        : checks.baseSize.startsWith('e26')
-            ? 'E26'
-            : 'E17';
+    final baseStr = switch (checks.baseSize) {
+      Mc.e26Candidate || Mc.userSelectedE26 => 'E26',
+      Mc.e17Candidate || Mc.userSelectedE17 => 'E17',
+      _ => 'E26', // unknownは安全側でE26候補
+    };
     final brightnessStr =
         checks.brightness != Mc.unknown ? ' ${checks.brightness}形相当' : '';
     String colorStr;

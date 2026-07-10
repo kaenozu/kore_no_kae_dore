@@ -10,7 +10,7 @@ import '../models/rule_engine_output.dart';
 class RuleEngine {
   /// EvidenceStateからルールエンジン出力を生成する
   RuleEngineOutput process(EvidenceState evidence, {int failedAttempts = 0}) {
-    if (failedAttempts >= 3) {
+    if (failedAttempts >= 3 && !evidence.manualChecks.isComplete) {
       return RuleEngineOutput(
         type: OutputType.manualCheck,
         title: '撮影がうまくいきませんでした',

@@ -6,6 +6,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/purchase_result.dart';
@@ -33,7 +34,8 @@ class PurchaseResultStorage {
       if (!await file.exists()) return null;
       final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       return PurchaseResult.fromJson(json);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PurchaseResultStorage.loadResult: $e');
       return null;
     }
   }
@@ -51,11 +53,14 @@ class PurchaseResultStorage {
             await File(file.path).readAsString(),
           ) as Map<String, dynamic>;
           results.add(PurchaseResult.fromJson(json));
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('PurchaseResultStorage.listResults: skipping $file ($e)');
+        }
       }
       results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return results;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PurchaseResultStorage.listResults: $e');
       return [];
     }
   }

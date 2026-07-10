@@ -92,6 +92,23 @@ void main() {
 
       expect(output.type, OutputType.manualCheck);
     });
+
+    test('3回失敗しても手動確認が完了している場合はpurchaseResultを優先する', () {
+      final evidence = EvidenceState(sessionId: sessionId);
+      evidence.fullViewCaptured = true;
+      evidence.baseViewCaptured = true;
+      evidence.labelViewCaptured = true;
+      evidence.fixtureChecked = true;
+      evidence.manualChecks.baseSize = Mc.e26Candidate;
+      evidence.manualChecks.colorTone = Mc.bulbColor;
+      evidence.manualChecks.brightness = '60';
+      evidence.manualChecks.sealedFixture = Mc.sealedNo;
+      evidence.manualChecks.dimmer = Mc.dimmerNo;
+
+      final output = engine.process(evidence, failedAttempts: 3);
+
+      expect(output.type, OutputType.purchaseResult);
+    });
   });
 
   group('RuleEngine.handlePoorQuality()', () {

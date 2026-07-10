@@ -57,7 +57,8 @@ class _HomeWithHistory extends StatefulWidget {
 
 class _HomeWithHistoryState extends State<_HomeWithHistory> {
   final _controller = SessionController();
-  Classifier _classifier = MockClassifier();
+  final _classifier = ValueNotifier<Classifier>(MockClassifier());
+  final _classifierStatus = ValueNotifier<String>('AI判定: 初期化中');
   final _debugLabelNotifier = ValueNotifier<String?>(null);
   bool _hasResumeSession = false;
 
@@ -72,8 +73,10 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
     final gemini = GeminiClassifier();
     try {
       await gemini.init();
-      _classifier = gemini;
+      _classifier.value = gemini;
+      _classifierStatus.value = 'AI判定: Gemini (${gemini.activeModel})';
     } catch (e) {
+      _classifierStatus.value = 'AI判定: Mock';
       debugPrint('Gemini unavailable, using MockClassifier: $e');
     }
   }
@@ -123,6 +126,11 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                     if (!context.mounted) return;
                     Navigator.of(context).pushNamed('/capture');
                   },
+                  onStartFresh: () async {
+                    // 既存進行中セッションをabandonedにする
+                    setState(() => _hasResumeSession = false);
+                    await _controller.abandonSession();
+                  },
                   onHistory: () {
                     Navigator.of(context).pushNamed('/history');
                   },
@@ -131,7 +139,8 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
               case '/capture':
                 return CaptureGuideScreen(
                   controller: _controller,
-                  classifier: _classifier,
+                  classifier: _classifier.value,
+                  classifierStatus: _classifierStatus,
                   debugLabelNotifier: _debugLabelNotifier,
                 );
               case '/manual_check':

@@ -1,8 +1,9 @@
 # .github/workflows/release.yml
 # リリースタグ作成時にAPKをビルドし、GitHub Releaseにアップロードする
+# 注意: 現在のAPKは開発確認用（debug署名）です。ストア公開用ではありません。
 # タグ例: v1.0.0
 
-name: Build and Upload APK
+name: Build Preview APK (dev confirmation)
 
 on:
   push:
@@ -30,8 +31,11 @@ jobs:
       - name: Build APK (release)
         run: flutter build apk --release
 
+      - name: Rename APK for preview clarity
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-release-preview.apk
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: build/app/outputs/flutter-apk/app-release-preview.apk
           generate_release_notes: true

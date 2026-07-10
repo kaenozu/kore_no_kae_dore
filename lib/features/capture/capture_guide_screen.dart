@@ -14,12 +14,14 @@ import '../../core/session/session_controller.dart';
 class CaptureGuideScreen extends StatefulWidget {
   final SessionController controller;
   final Classifier classifier;
+  final ValueNotifier<String> classifierStatus;
   final ValueNotifier<String?> debugLabelNotifier;
 
   const CaptureGuideScreen({
     super.key,
     required this.controller,
     required this.classifier,
+    required this.classifierStatus,
     required this.debugLabelNotifier,
   });
 
@@ -86,6 +88,47 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
               ),
+            ),
+            const SizedBox(height: 8),
+
+            // AI判定ステータス表示
+            ValueListenableBuilder<String>(
+              valueListenable: widget.classifierStatus,
+              builder: (context, status, _) {
+                final isGemini = status.contains('Gemini');
+                final isMock = status.contains('Mock');
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isGemini
+                        ? Colors.green[50]
+                        : isMock
+                            ? Colors.orange[50]
+                            : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isGemini
+                            ? Icons.auto_awesome
+                            : Icons.info_outline,
+                        size: 14,
+                        color: isGemini ? Colors.green[700] : Colors.orange[700],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isGemini ? Colors.green[700] : Colors.orange[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 16),
 
