@@ -10,6 +10,7 @@ import 'package:kore_no_kae_dore/core/models/classification_result.dart';
 import 'package:kore_no_kae_dore/core/models/evidence_state.dart';
 import 'package:kore_no_kae_dore/core/models/rule_engine_output.dart';
 import 'package:kore_no_kae_dore/core/session/session_controller.dart';
+import 'package:kore_no_kae_dore/core/storage/session_storage.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 ClassificationResult _result(ImageLabel label) {
@@ -32,14 +33,95 @@ class FakePathProvider extends PathProviderPlatform {
 void main() {
   late SessionController controller;
 
-  setUp(() {
+  setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     PathProviderPlatform.instance = FakePathProvider();
+    // tempディレクトリに残った古いセッションファイルを削除
+    final cleanupStorage = SessionStorage();
+    for (final s in await cleanupStorage.listSessions()) {
+      await cleanupStorage.deleteSession(s.id);
+    }
     controller = SessionController();
   });
 
-  tearDown(() {
+  tearDown(() async {
+    if (controller.session != null) {
+      await controller.storage.deleteSession(controller.session!.id);
+    }
     controller.dispose();
+  });
+
+  group('session restoration', () {
+    test('findLatestInProgress は進行中セッションを返す', () async {
+      await controller.startSession('bulb');
+      final sessionId = controller.session!.id;
+
+      final found = await controller.storage.findLatestInProgress();
+
+      expect(found, isNotNull);
+      expect(found!.id, sessionId);
+      expect(found.status, 'in_progress');
+    });
+
+    test('findLatestInProgress は完了済みセッションを返さない', () async {
+      await controller.storage.saveSession(CaptureSession(
+        id: 'completed-only',
+        category: 'bulb',
+        status: 'completed',
+        currentStep: StepName.result,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+      // cleanup を確実に実行
+      addTearDown(() => controller.storage.deleteSession('completed-only'));
+
+      final found = await controller.storage.findLatestInProgress();
+      expect(found, isNull);
+    });
+
+    test('saveEvidence / loadEvidence ラウンドトリップ', () async {
+      final evidence = EvidenceState(
+        sessionId: 'test-evidence-001',
+        itemType: 'bulb',
+        fullViewCaptured: true,
+        baseViewCaptured: false,
+        manualChecks: ManualChecks(baseSize: Mc.e26Candidate),
+      );
+
+      await controller.storage.saveEvidence(evidence);
+      final loaded = await controller.storage.loadEvidence('test-evidence-001');
+
+      expect(loaded, isNotNull);
+      expect(loaded!.sessionId, 'test-evidence-001');
+      expect(loaded.fullViewCaptured, true);
+      expect(loaded.manualChecks.baseSize, Mc.e26Candidate);
+    });
+
+    test('loadSession は保存済み状態を復元する', () async {
+      await controller.startSession('bulb');
+      final sessionId = controller.session!.id;
+
+      // 分類処理で状態を進める
+      await controller.processClassification(_result(ImageLabel.bulbFullView));
+      expect(controller.evidence!.fullViewCaptured, true);
+      expect(controller.session!.currentStep, StepName.baseView);
+
+      // 新しいコントローラで読み込み
+      final newController = SessionController();
+      final savedSession = await newController.storage.loadSession(sessionId);
+      final savedEvidence = await newController.storage.loadEvidence(sessionId);
+      expect(savedSession, isNotNull);
+      expect(savedEvidence, isNotNull);
+
+      await newController.loadSession(savedSession!, savedEvidence!);
+
+      expect(newController.session!.id, sessionId);
+      expect(newController.evidence!.fullViewCaptured, true);
+      expect(newController.session!.currentStep, StepName.baseView);
+      expect(newController.lastOutput, isNotNull);
+
+      newController.dispose();
+    });
   });
 
   group('startSession()', () {
