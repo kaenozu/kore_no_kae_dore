@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ネットワーク通信（Gemini API呼び出しに必要） -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- カメラ撮影に必要 -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- ギャラリー選択（Android 12以下）に必要 -->
