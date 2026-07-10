@@ -10,14 +10,16 @@ import '../../core/storage/purchase_result_storage.dart';
 import '../../shared/widgets/copyable_text.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({super.key, this.storage});
+
+  final PurchaseResultStorage? storage;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final _storage = PurchaseResultStorage();
+  late final _storage = widget.storage ?? PurchaseResultStorage();
   List<PurchaseResult> _results = [];
   bool _loading = true;
 
