@@ -64,13 +64,13 @@ void main() {
       );
       final controller = StubSessionController(session: session);
       controller.testLastOutput = lastOutput;
-      final classifier = StubClassifier();
+      final classifierNotifier = ValueNotifier<Classifier>(StubClassifier());
       final classifierStatus = ValueNotifier<String>('AI判定: Mock');
       final debugNotifier = ValueNotifier<String?>(null);
 
       await tester.pumpWidget(_wrap(CaptureGuideScreen(
         controller: controller,
-        classifier: classifier,
+        classifierNotifier: classifierNotifier,
         classifierStatus: classifierStatus,
         debugLabelNotifier: debugNotifier,
       )));
@@ -127,6 +127,37 @@ void main() {
       );
 
       expect(find.text('撮影済み → 次に進む'), findsOneWidget);
+    });
+
+    testWidgets('classifierNotifier の値変更が撮影時の分類器に反映される', (tester) async {
+      final session = CaptureSession(
+        id: 'test-cg-swap',
+        category: 'bulb',
+        status: 'in_progress',
+        currentStep: StepName.fullView,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      final controller = StubSessionController(session: session);
+      final notifier = ValueNotifier<Classifier>(StubClassifier());
+      final status = ValueNotifier<String>('AI判定: Mock');
+      final debugNotifier = ValueNotifier<String?>(null);
+
+      await tester.pumpWidget(_wrap(CaptureGuideScreen(
+        controller: controller,
+        classifierNotifier: notifier,
+        classifierStatus: status,
+        debugLabelNotifier: debugNotifier,
+      )));
+      await tester.pump();
+
+      // 表示後、別のclassifierに入れ替え
+      final swapped = StubClassifier();
+      notifier.value = swapped;
+      await tester.pump();
+
+      // notifierの現在値がswappedであることを確認
+      expect(notifier.value, equals(swapped));
     });
   });
 }

@@ -101,6 +101,8 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
 
   @override
   void dispose() {
+    _classifier.dispose();
+    _classifierStatus.dispose();
     _debugLabelNotifier.dispose();
     super.dispose();
   }
@@ -139,7 +141,7 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
               case '/capture':
                 return CaptureGuideScreen(
                   controller: _controller,
-                  classifier: _classifier.value,
+                  classifierNotifier: _classifier,
                   classifierStatus: _classifierStatus,
                   debugLabelNotifier: _debugLabelNotifier,
                 );

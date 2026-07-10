@@ -13,14 +13,14 @@ import '../../core/session/session_controller.dart';
 
 class CaptureGuideScreen extends StatefulWidget {
   final SessionController controller;
-  final Classifier classifier;
+  final ValueNotifier<Classifier> classifierNotifier;
   final ValueNotifier<String> classifierStatus;
   final ValueNotifier<String?> debugLabelNotifier;
 
   const CaptureGuideScreen({
     super.key,
     required this.controller,
-    required this.classifier,
+    required this.classifierNotifier,
     required this.classifierStatus,
     required this.debugLabelNotifier,
   });
@@ -318,11 +318,13 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
       if (picked == null) return;
 
       final debugLabel = widget.debugLabelNotifier.value;
-      if (widget.classifier is FixedLabelMixin) {
-        (widget.classifier as FixedLabelMixin).fixedLabel = debugLabel;
+      final classifier = widget.classifierNotifier.value;
+      if (classifier is FixedLabelMixin) {
+        classifier.fixedLabel = debugLabel;
       }
 
-      final result = await widget.classifier.classify(picked.path);
+      debugPrint('classify using: ${classifier.runtimeType}');
+      final result = await classifier.classify(picked.path);
       await widget.controller.processClassification(result);
 
       if (!mounted) return;
