@@ -156,11 +156,11 @@ class SessionController {
     if (_evidence == null || _session == null) return;
 
     final checks = _evidence!.manualChecks;
-    final baseStr = checks.baseSize == Mc.unknown
-        ? 'E26'
-        : checks.baseSize.startsWith('e26')
-            ? 'E26'
-            : 'E17';
+    final baseStr = switch (checks.baseSize) {
+      Mc.e26Candidate || Mc.userSelectedE26 => 'E26',
+      Mc.e17Candidate || Mc.userSelectedE17 => 'E17',
+      _ => 'E26', // unknown の場合は安全側で E26 候補
+    };
     final brightnessStr =
         checks.brightness != Mc.unknown ? ' ${checks.brightness}形相当' : '';
     String colorStr;

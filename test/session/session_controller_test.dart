@@ -267,6 +267,48 @@ void main() {
       expect(controller.session!.failedAttempts, 0);
       expect(controller.session!.status, 'completed');
     });
+
+    test('userSelectedE26 → E26候補として扱われる', () async {
+      await controller.startSession('led_bulb');
+      controller.evidence!.fullViewCaptured = true;
+      controller.evidence!.baseViewCaptured = true;
+      controller.evidence!.labelViewCaptured = true;
+      controller.evidence!.fixtureChecked = true;
+
+      await controller.updateManualCheck(
+        baseSize: Mc.userSelectedE26,
+        colorTone: Mc.bulbColor,
+        brightness: '60',
+        sealedFixture: Mc.sealedNo,
+        dimmer: Mc.dimmerNo,
+      );
+
+      expect(controller.lastResult, isNotNull);
+      expect(controller.lastResult!.candidateTitle, contains('E26'));
+      expect(controller.lastResult!.candidateTitle, isNot(contains('E17')));
+      expect(controller.lastResult!.searchKeywords.first, contains('E26'));
+    });
+
+    test('userSelectedE17 → E17候補として扱われる', () async {
+      await controller.startSession('led_bulb');
+      controller.evidence!.fullViewCaptured = true;
+      controller.evidence!.baseViewCaptured = true;
+      controller.evidence!.labelViewCaptured = true;
+      controller.evidence!.fixtureChecked = true;
+
+      await controller.updateManualCheck(
+        baseSize: Mc.userSelectedE17,
+        colorTone: Mc.bulbColor,
+        brightness: '60',
+        sealedFixture: Mc.sealedNo,
+        dimmer: Mc.dimmerNo,
+      );
+
+      expect(controller.lastResult, isNotNull);
+      expect(controller.lastResult!.candidateTitle, contains('E17'));
+      expect(controller.lastResult!.candidateTitle, isNot(contains('E26')));
+      expect(controller.lastResult!.searchKeywords.first, contains('E17'));
+    });
   });
 
   group('abandonSession()', () {
