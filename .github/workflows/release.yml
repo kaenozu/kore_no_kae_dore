@@ -1,7 +1,7 @@
 # .github/workflows/release.yml
 # リリースタグ作成時にAPKをビルドし、GitHub Releaseにアップロードする
 # 注意: 現在のAPKは開発確認用（debug署名）です。ストア公開用ではありません。
-# タグ例: v1.0.0
+# タグ例: v0.6.2
 
 name: Build Preview APK (dev confirmation)
 
