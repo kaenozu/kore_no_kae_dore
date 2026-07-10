@@ -83,7 +83,6 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
 
   @override
   void dispose() {
-    _controller.dispose();
     _debugLabelNotifier.dispose();
     super.dispose();
   }

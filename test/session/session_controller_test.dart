@@ -48,7 +48,6 @@ void main() {
     if (controller.session != null) {
       await controller.storage.deleteSession(controller.session!.id);
     }
-    controller.dispose();
   });
 
   group('session restoration', () {
@@ -120,7 +119,6 @@ void main() {
       expect(newController.session!.currentStep, StepName.baseView);
       expect(newController.lastOutput, isNotNull);
 
-      newController.dispose();
     });
   });
 

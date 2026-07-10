@@ -3,7 +3,6 @@
 // 画面間の状態共有とルールエンジン呼び出しを担当
 // 関連: 全画面, rule_engine.dart, mock_classifier.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/capture_session.dart';
@@ -15,7 +14,7 @@ import '../rules/rule_engine.dart';
 import '../storage/purchase_result_storage.dart';
 import '../storage/session_storage.dart';
 
-class SessionController extends ChangeNotifier {
+class SessionController {
   final _uuid = const Uuid();
   final _ruleEngine = RuleEngine();
   final storage = SessionStorage();
@@ -41,7 +40,6 @@ class SessionController extends ChangeNotifier {
     if (_lastOutput!.type == OutputType.purchaseResult) {
       _lastResult = await _resultStorage.loadResult(session.resultId ?? '');
     }
-    notifyListeners();
   }
 
   /// 新しいセッションを開始する
@@ -61,7 +59,6 @@ class SessionController extends ChangeNotifier {
     _lastClassification = null;
     await storage.saveSession(_session!);
     await storage.saveEvidence(_evidence!);
-    notifyListeners();
   }
 
   /// 分類結果を処理してエビデンスを更新する
@@ -77,7 +74,6 @@ class SessionController extends ChangeNotifier {
       _session!.updatedAt = DateTime.now();
       await storage.saveSession(_session!);
       await storage.saveEvidence(_evidence!);
-      notifyListeners();
       return;
     }
 
@@ -87,7 +83,6 @@ class SessionController extends ChangeNotifier {
       _session!.updatedAt = DateTime.now();
       await storage.saveSession(_session!);
       await storage.saveEvidence(_evidence!);
-      notifyListeners();
       return;
     }
 
@@ -124,7 +119,6 @@ class SessionController extends ChangeNotifier {
     _session!.updatedAt = DateTime.now();
     await storage.saveSession(_session!);
     await storage.saveEvidence(_evidence!);
-    notifyListeners();
   }
 
   /// 手動確認の値を更新する
@@ -151,8 +145,6 @@ class SessionController extends ChangeNotifier {
     if (_lastOutput!.type == OutputType.purchaseResult) {
       await _finalizeResult();
     }
-
-    notifyListeners();
   }
 
   Future<void> _finalizeResult() async {
@@ -231,7 +223,6 @@ class SessionController extends ChangeNotifier {
     _lastOutput = null;
     _lastResult = null;
     _lastClassification = null;
-    notifyListeners();
   }
 
   /// リセット
@@ -241,6 +232,5 @@ class SessionController extends ChangeNotifier {
     _lastOutput = null;
     _lastResult = null;
     _lastClassification = null;
-    notifyListeners();
   }
 }

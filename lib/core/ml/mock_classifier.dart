@@ -1,9 +1,7 @@
 // lib/core/ml/mock_classifier.dart
 // ダミーの分類結果を返すMockClassifier
 // 画面遷移のテスト用。将来的にTFLiteClassifierと差し替える
-// 関連: classifier.dart, analysis_instruction_screen.dart
-
-import 'dart:math';
+// 関連: classifier.dart, capture_guide_screen.dart, app.dart
 
 import 'package:uuid/uuid.dart';
 
@@ -11,8 +9,8 @@ import '../models/classification_result.dart';
 import 'classifier.dart';
 
 class MockClassifier extends Classifier with FixedLabelMixin {
-  final _random = Random();
-  final _uuid = Uuid();
+  final _uuid = const Uuid();
+  int _callCount = 0;
 
   MockClassifier({String? fixedLabel}) {
     this.fixedLabel = fixedLabel;
@@ -20,10 +18,9 @@ class MockClassifier extends Classifier with FixedLabelMixin {
 
   @override
   Future<ClassificationResult> classify(String imagePath) async {
-    // 実際の推論時間を模擬
     await Future.delayed(const Duration(milliseconds: 500));
 
-    final label = fixedLabel ?? _randomLabel();
+    final label = fixedLabel ?? _cycleLabel();
     final predictions = [
       Prediction(label: label, score: fixedScore),
       Prediction(label: _fallbackLabel(label), score: 1.0 - fixedScore),
@@ -38,9 +35,16 @@ class MockClassifier extends Classifier with FixedLabelMixin {
     );
   }
 
-  String _randomLabel() {
-    const labels = ImageLabel.values;
-    return labels[_random.nextInt(labels.length)].value;
+  String _cycleLabel() {
+    const sequence = [
+      ImageLabel.bulbFullView,
+      ImageLabel.bulbBaseView,
+      ImageLabel.bulbLabelSideView,
+      ImageLabel.fixtureSocketView,
+    ];
+    final label = sequence[_callCount % sequence.length];
+    _callCount++;
+    return label.value;
   }
 
   String _fallbackLabel(String label) {

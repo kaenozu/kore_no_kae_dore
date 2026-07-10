@@ -66,7 +66,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('撮影ガイド')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
