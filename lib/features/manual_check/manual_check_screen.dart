@@ -4,6 +4,8 @@
 // 関連: evidence_state.dart, session_controller.dart
 
 import 'package:flutter/material.dart';
+import '../../core/models/evidence_state.dart';
+import '../../core/models/rule_engine_output.dart';
 import '../../core/session/session_controller.dart';
 
 class ManualCheckScreen extends StatefulWidget {
@@ -27,12 +29,25 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
     super.initState();
     final checks = widget.controller.evidence?.manualChecks;
     if (checks != null) {
-      _baseSize = checks.baseSize != 'unknown' ? checks.baseSize : null;
-      _colorTone = checks.colorTone != 'unknown' ? checks.colorTone : null;
-      _brightness = checks.brightness != 'unknown' ? checks.brightness : null;
-      _sealedFixture = checks.sealedFixture != 'unknown' ? checks.sealedFixture : null;
-      _dimmer = checks.dimmer != 'unknown' ? checks.dimmer : null;
+      _baseSize = checks.baseSize != Mc.unknown ? checks.baseSize : null;
+      _colorTone = checks.colorTone != Mc.unknown ? checks.colorTone : null;
+      _brightness = checks.brightness != Mc.unknown ? checks.brightness : null;
+      _sealedFixture = checks.sealedFixture != Mc.unknown ? checks.sealedFixture : null;
+      _dimmer = checks.dimmer != Mc.unknown ? checks.dimmer : null;
     }
+  }
+
+  bool get _canConfirm {
+    final checks = widget.controller.evidence?.manualChecks;
+    if (checks == null) return false;
+
+    // 表示されている全項目が選択済みか確認
+    if (checks.baseSize == Mc.unknown && _baseSize == null) return false;
+    if (checks.colorTone == Mc.unknown && _colorTone == null) return false;
+    if (checks.brightness == Mc.unknown && _brightness == null) return false;
+    if (checks.sealedFixture == Mc.unknown && _sealedFixture == null) return false;
+    if (checks.dimmer == Mc.unknown && _dimmer == null) return false;
+    return true;
   }
 
   @override
@@ -46,11 +61,11 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
     }
 
     final unknownItems = <String>[
-      if (_baseSize == null && checks.baseSize == 'unknown') '口金サイズ',
-      if (_colorTone == null && checks.colorTone == 'unknown') '光色',
-      if (_brightness == null && checks.brightness == 'unknown') '明るさ',
-      if (_sealedFixture == null && checks.sealedFixture == 'unknown') '密閉器具',
-      if (_dimmer == null && checks.dimmer == 'unknown') '調光器',
+      if (_baseSize == null && checks.baseSize == Mc.unknown) '口金サイズ',
+      if (_colorTone == null && checks.colorTone == Mc.unknown) '光色',
+      if (_brightness == null && checks.brightness == Mc.unknown) '明るさ',
+      if (_sealedFixture == null && checks.sealedFixture == Mc.unknown) '密閉器具',
+      if (_dimmer == null && checks.dimmer == Mc.unknown) '調光器',
     ];
 
     return Scaffold(
@@ -84,7 +99,7 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
             SizedBox(
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: _onConfirm,
+                onPressed: _canConfirm ? _onConfirm : null,
                 icon: const Icon(Icons.check),
                 label: const Text('確認して次へ', style: TextStyle(fontSize: 16)),
               ),
@@ -99,8 +114,8 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
     return _buildSelectorGroup(
       label: '口金サイズ',
       options: const [
-        ('e26_candidate', 'E26（直径26mm / 一般的なサイズ）'),
-        ('e17_candidate', 'E17（直径17mm / 小口径）'),
+        (Mc.e26Candidate, 'E26（直径26mm / 一般的なサイズ）'),
+        (Mc.e17Candidate, 'E17（直径17mm / 小口径）'),
       ],
       selected: _baseSize,
       onSelect: (v) => setState(() => _baseSize = v),
@@ -111,9 +126,9 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
     return _buildSelectorGroup(
       label: '光色',
       options: const [
-        ('bulb_color', '電球色（オレンジがかった暖かい色）'),
-        ('neutral_white', '昼白色（自然な白色）'),
-        ('daylight', '昼光色（青みがかった白色）'),
+        (Mc.bulbColor, '電球色（オレンジがかった暖かい色）'),
+        (Mc.neutralWhite, '昼白色（自然な白色）'),
+        (Mc.daylight, '昼光色（青みがかった白色）'),
       ],
       selected: _colorTone,
       onSelect: (v) => setState(() => _colorTone = v),
@@ -137,8 +152,8 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
     return _buildSelectorGroup(
       label: '密閉器具',
       options: const [
-        ('yes', '密閉器具で使う（密閉対応が必要）'),
-        ('no', '密閉器具ではない'),
+        (Mc.sealedYes, '密閉器具で使う（密閉対応が必要）'),
+        (Mc.sealedNo, '密閉器具ではない'),
       ],
       selected: _sealedFixture,
       onSelect: (v) => setState(() => _sealedFixture = v),
@@ -149,8 +164,8 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
     return _buildSelectorGroup(
       label: '調光器',
       options: const [
-        ('yes', '調光スイッチを使っている（調光対応が必要）'),
-        ('no', '調光スイッチは使っていない'),
+        (Mc.dimmerYes, '調光スイッチを使っている（調光対応が必要）'),
+        (Mc.dimmerNo, '調光スイッチは使っていない'),
       ],
       selected: _dimmer,
       onSelect: (v) => setState(() => _dimmer = v),
@@ -219,16 +234,9 @@ class _ManualCheckScreenState extends State<ManualCheckScreen> {
       dimmer: _dimmer ?? widget.controller.evidence?.manualChecks.dimmer,
     );
     if (!mounted) return;
-
     final output = widget.controller.lastOutput;
-    if (output?.type == 'manual_check') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('未確認の項目があります')),
-      );
-      return;
-    }
 
-    if (output?.type == 'purchase_result') {
+    if (output?.type == OutputType.purchaseResult) {
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/result',

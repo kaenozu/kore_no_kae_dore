@@ -40,7 +40,7 @@ class SessionController extends ChangeNotifier {
       id: _uuid.v4(),
       category: category,
       status: 'in_progress',
-      currentStep: 'full_view',
+      currentStep: StepName.fullView,
       createdAt: now,
       updatedAt: now,
     );
@@ -59,9 +59,7 @@ class SessionController extends ChangeNotifier {
     _lastClassification = result;
     final label = result.topLabel;
 
-    if (label == 'unknown_too_dark' ||
-        label == 'unknown_blurry' ||
-        label == 'unknown_too_far') {
+    if (label.isPoorQuality) {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.handlePoorQuality(label);
       _session!.updatedAt = DateTime.now();
@@ -70,7 +68,7 @@ class SessionController extends ChangeNotifier {
       return;
     }
 
-    if (label == 'unknown_other') {
+    if (label == ImageLabel.unknownOther) {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session!.failedAttempts);
       _session!.updatedAt = DateTime.now();
@@ -82,27 +80,29 @@ class SessionController extends ChangeNotifier {
     _session!.failedAttempts = 0;
 
     switch (label) {
-      case 'bulb_full_view':
+      case ImageLabel.bulbFullView:
         _evidence!.fullViewCaptured = true;
-        _session!.currentStep = 'base_view';
+        _session!.currentStep = StepName.baseView;
         break;
-      case 'bulb_base_view':
+      case ImageLabel.bulbBaseView:
         _evidence!.baseViewCaptured = true;
-        _session!.currentStep = 'label_view';
+        _session!.currentStep = StepName.labelView;
         break;
-      case 'bulb_label_side_view':
+      case ImageLabel.bulbLabelSideView:
         _evidence!.labelViewCaptured = true;
-        _session!.currentStep = 'fixture_check';
+        _session!.currentStep = StepName.fixtureCheck;
         break;
-      case 'fixture_socket_view':
+      case ImageLabel.fixtureSocketView:
         _evidence!.fixtureChecked = true;
-        _session!.currentStep = 'fixture_check';
+        _session!.currentStep = StepName.fixtureCheck;
         break;
-      case 'bulb_package_view':
+      case ImageLabel.bulbPackageView:
         _evidence!.fullViewCaptured = true;
         _evidence!.baseViewCaptured = true;
         _evidence!.labelViewCaptured = true;
-        _session!.currentStep = 'fixture_check';
+        _session!.currentStep = StepName.fixtureCheck;
+        break;
+      default:
         break;
     }
 
@@ -132,37 +132,29 @@ class SessionController extends ChangeNotifier {
     _session!.updatedAt = DateTime.now();
     await _sessionStorage.saveSession(_session!);
 
-    if (_lastOutput!.type == 'purchase_result') {
+    if (_lastOutput!.type == OutputType.purchaseResult) {
       await _finalizeResult();
     }
 
     notifyListeners();
   }
 
-  /// さらに撮影が必要かどうか（false = 結果表示へ進める）
-  bool get needsCapture =>
-      _evidence != null &&
-      (!_evidence!.fullViewCaptured ||
-          !_evidence!.baseViewCaptured ||
-          !_evidence!.labelViewCaptured ||
-          !_evidence!.fixtureChecked);
-
   Future<void> _finalizeResult() async {
     if (_evidence == null || _session == null) return;
 
     final checks = _evidence!.manualChecks;
-    final baseStr = checks.baseSize.contains('e26') ? 'E26' : 'E17';
+    final baseStr = checks.baseSize.startsWith('e26') ? 'E26' : 'E17';
     final brightnessStr =
-        checks.brightness != 'unknown' ? ' ${checks.brightness}形相当' : '';
+        checks.brightness != Mc.unknown ? ' ${checks.brightness}形相当' : '';
     String colorStr;
     switch (checks.colorTone) {
-      case 'bulb_color':
+      case Mc.bulbColor:
         colorStr = '電球色';
         break;
-      case 'neutral_white':
+      case Mc.neutralWhite:
         colorStr = '昼白色';
         break;
-      case 'daylight':
+      case Mc.daylight:
         colorStr = '昼光色';
         break;
       default:
@@ -174,21 +166,21 @@ class SessionController extends ChangeNotifier {
     final checkBeforeBuy = <String>[
       '口金が$baseStrであることを現物またはパッケージで確認してください',
     ];
-    if (checks.sealedFixture == 'yes') {
+    if (checks.sealedFixture == Mc.sealedYes) {
       checkBeforeBuy.add('密閉器具対応の商品を選んでください');
     }
-    if (checks.dimmer == 'yes') {
+    if (checks.dimmer == Mc.dimmerYes) {
       checkBeforeBuy.add('調光器対応の商品を選んでください');
     }
-    if (checks.brightness == 'unknown') {
+    if (checks.brightness == Mc.unknown) {
       checkBeforeBuy.add('明るさ（ワット数相当）をパッケージで確認してください');
     }
 
     final summary =
         '$baseStr口金のLED電球を探しています。$brightnessStr $colorStr候補です。'
 
-        '${checks.sealedFixture == 'yes' ? '密閉器具対応が必要です。' : ''}'
-        '${checks.dimmer == 'yes' ? '調光器対応が必要です。' : ''}';
+        '${checks.sealedFixture == Mc.sealedYes ? '密閉器具対応が必要です。' : ''}'
+        '${checks.dimmer == Mc.dimmerYes ? '調光器対応が必要です。' : ''}';
 
     final now = DateTime.now();
     _lastResult = PurchaseResult(
@@ -203,7 +195,7 @@ class SessionController extends ChangeNotifier {
     );
 
     _session!.status = 'completed';
-    _session!.currentStep = 'result';
+    _session!.currentStep = StepName.result;
     _session!.resultId = _lastResult!.id;
     _session!.updatedAt = now;
 

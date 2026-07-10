@@ -10,15 +10,13 @@ import 'package:uuid/uuid.dart';
 import '../models/classification_result.dart';
 import 'classifier.dart';
 
-class MockClassifier extends Classifier {
+class MockClassifier extends Classifier with FixedLabelMixin {
   final _random = Random();
   final _uuid = Uuid();
 
-  // デバッグ用に固定ラベルを指定できる（null = ランダム）
-  String? fixedLabel;
-  double fixedScore = 0.85;
-
-  MockClassifier({this.fixedLabel});
+  MockClassifier({String? fixedLabel}) {
+    this.fixedLabel = fixedLabel;
+  }
 
   @override
   Future<ClassificationResult> classify(String imagePath) async {
@@ -41,35 +39,14 @@ class MockClassifier extends Classifier {
   }
 
   String _randomLabel() {
-    const labels = [
-      'bulb_full_view',
-      'bulb_base_view',
-      'bulb_label_side_view',
-      'fixture_socket_view',
-      'bulb_package_view',
-      'unknown_too_dark',
-      'unknown_blurry',
-      'unknown_too_far',
-      'unknown_other',
-    ];
-    return labels[_random.nextInt(labels.length)];
+    const labels = ImageLabel.values;
+    return labels[_random.nextInt(labels.length)].value;
   }
 
   String _fallbackLabel(String label) {
-    const allLabels = [
-      'bulb_full_view',
-      'bulb_base_view',
-      'bulb_label_side_view',
-      'fixture_socket_view',
-      'bulb_package_view',
-      'unknown_too_dark',
-      'unknown_blurry',
-      'unknown_too_far',
-      'unknown_other',
-    ];
-    for (final l in allLabels) {
-      if (l != label) return l;
+    for (final l in ImageLabel.values) {
+      if (l.value != label) return l.value;
     }
-    return 'unknown_other';
+    return ImageLabel.unknownOther.value;
   }
 }

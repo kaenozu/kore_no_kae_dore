@@ -3,7 +3,9 @@
 // 関連: rule_engine.dart, evidence_state.dart
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kore_no_kae_dore/core/models/classification_result.dart';
 import 'package:kore_no_kae_dore/core/models/evidence_state.dart';
+import 'package:kore_no_kae_dore/core/models/rule_engine_output.dart';
 import 'package:kore_no_kae_dore/core/rules/rule_engine.dart';
 
 void main() {
@@ -16,13 +18,12 @@ void main() {
   });
 
   group('RuleEngine.process()', () {
-    test(
-        'bulb_full_view未撮影の場合、口金撮影指示（full_view）を返す', () {
+    test('bulb_full_view未撮影の場合、口金撮影指示（full_view）を返す', () {
       final evidence = EvidenceState(sessionId: sessionId);
 
       final output = engine.process(evidence);
 
-      expect(output.type, 'next_instruction');
+      expect(output.type, OutputType.nextInstruction);
       expect(output.requiredStep, 'full_view');
       expect(output.title, contains('電球全体'));
     });
@@ -32,7 +33,7 @@ void main() {
 
       final output = engine.process(evidence, failedAttempts: 3);
 
-      expect(output.type, 'manual_check');
+      expect(output.type, OutputType.manualCheck);
       expect(output.title, contains('うまくいきません'));
     });
 
@@ -42,15 +43,15 @@ void main() {
       evidence.baseViewCaptured = true;
       evidence.labelViewCaptured = true;
       evidence.fixtureChecked = true;
-      evidence.manualChecks.baseSize = 'e26_candidate';
-      evidence.manualChecks.colorTone = 'bulb_color';
+      evidence.manualChecks.baseSize = Mc.e26Candidate;
+      evidence.manualChecks.colorTone = Mc.bulbColor;
       evidence.manualChecks.brightness = '60';
-      evidence.manualChecks.sealedFixture = 'no';
-      evidence.manualChecks.dimmer = 'no';
+      evidence.manualChecks.sealedFixture = Mc.sealedNo;
+      evidence.manualChecks.dimmer = Mc.dimmerNo;
 
       final output = engine.process(evidence);
 
-      expect(output.type, 'purchase_result');
+      expect(output.type, OutputType.purchaseResult);
       expect(output.warnings.any((w) => w.contains('候補')), true);
     });
 
@@ -60,15 +61,15 @@ void main() {
       evidence.baseViewCaptured = true;
       evidence.labelViewCaptured = true;
       evidence.fixtureChecked = true;
-      evidence.manualChecks.baseSize = 'e26_candidate';
-      evidence.manualChecks.colorTone = 'bulb_color';
+      evidence.manualChecks.baseSize = Mc.e26Candidate;
+      evidence.manualChecks.colorTone = Mc.bulbColor;
       evidence.manualChecks.brightness = '60';
-      evidence.manualChecks.sealedFixture = 'no';
-      evidence.manualChecks.dimmer = 'no';
+      evidence.manualChecks.sealedFixture = Mc.sealedNo;
+      evidence.manualChecks.dimmer = Mc.dimmerNo;
 
       final output = engine.process(evidence);
 
-      expect(output.type, 'purchase_result');
+      expect(output.type, OutputType.purchaseResult);
 
       final allText = [
         output.title,
@@ -89,59 +90,37 @@ void main() {
 
       final output = engine.process(evidence);
 
-      expect(output.type, 'manual_check');
+      expect(output.type, OutputType.manualCheck);
     });
   });
 
   group('RuleEngine.handlePoorQuality()', () {
-    test('too_darkの場合、明るい場所での再撮影指示を返す', () {
-      final output = engine.handlePoorQuality('too_dark');
+    test('unknown_too_darkの場合、明るい場所での再撮影指示を返す', () {
+      final output = engine.handlePoorQuality(ImageLabel.unknownTooDark);
 
-      expect(output.type, 'next_instruction');
+      expect(output.type, OutputType.nextInstruction);
       expect(output.title, contains('暗すぎます'));
       expect(output.message, contains('明るい'));
-    });
-
-    test('unknown_too_darkの場合、「暗すぎます」を返す', () {
-      final output = engine.handlePoorQuality('unknown_too_dark');
-
-      expect(output.type, 'next_instruction');
-      expect(output.title, contains('暗すぎます'));
-      expect(output.message, contains('明るい'));
-    });
-
-    test('blurryの場合、ピント再調整指示を返す', () {
-      final output = engine.handlePoorQuality('blurry');
-
-      expect(output.type, 'next_instruction');
-      expect(output.title, contains('ピント'));
     });
 
     test('unknown_blurryの場合、「ピントが合っていません」を返す', () {
-      final output = engine.handlePoorQuality('unknown_blurry');
+      final output = engine.handlePoorQuality(ImageLabel.unknownBlurry);
 
-      expect(output.type, 'next_instruction');
+      expect(output.type, OutputType.nextInstruction);
       expect(output.title, contains('ピント'));
     });
 
-    test('too_farの場合、近づく指示を返す', () {
-      final output = engine.handlePoorQuality('too_far');
-
-      expect(output.type, 'next_instruction');
-      expect(output.title, contains('遠すぎます'));
-    });
-
     test('unknown_too_farの場合、「遠すぎます」を返す', () {
-      final output = engine.handlePoorQuality('unknown_too_far');
+      final output = engine.handlePoorQuality(ImageLabel.unknownTooFar);
 
-      expect(output.type, 'next_instruction');
+      expect(output.type, OutputType.nextInstruction);
       expect(output.title, contains('遠すぎます'));
     });
 
-    test('未知のラベルはデフォルトメッセージにフォールバックする', () {
-      final output = engine.handlePoorQuality('unknown_other');
+    test('unknown_other（想定外ラベル）はデフォルトメッセージにフォールバックする', () {
+      final output = engine.handlePoorQuality(ImageLabel.unknownOther);
 
-      expect(output.type, 'next_instruction');
+      expect(output.type, OutputType.nextInstruction);
       expect(output.title, contains('撮り直してください'));
     });
   });
@@ -155,11 +134,11 @@ void main() {
 
     test('全て入力済みの場合はtrue', () {
       final checks = ManualChecks(
-        baseSize: 'e26_candidate',
-        colorTone: 'bulb_color',
+        baseSize: Mc.e26Candidate,
+        colorTone: Mc.bulbColor,
         brightness: '60',
-        sealedFixture: 'no',
-        dimmer: 'no',
+        sealedFixture: Mc.sealedNo,
+        dimmer: Mc.dimmerNo,
       );
 
       expect(checks.isComplete, true);
@@ -167,8 +146,8 @@ void main() {
 
     test('一部のみ入力の場合はfalse', () {
       final checks = ManualChecks(
-        baseSize: 'e26_candidate',
-        colorTone: 'bulb_color',
+        baseSize: Mc.e26Candidate,
+        colorTone: Mc.bulbColor,
       );
 
       expect(checks.isComplete, false);

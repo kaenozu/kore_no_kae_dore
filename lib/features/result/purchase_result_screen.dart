@@ -4,8 +4,8 @@
 // 関連: purchase_result.dart, home_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../core/session/session_controller.dart';
+import '../../shared/widgets/copyable_text.dart';
 
 class PurchaseResultScreen extends StatelessWidget {
   final SessionController controller;
@@ -123,34 +123,7 @@ class PurchaseResultScreen extends StatelessWidget {
                     ...result.searchKeywords.map(
                       (keyword) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  keyword,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.copy),
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: keyword));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('コピーしました')),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+                        child: CopyableText(text: keyword),
                       ),
                     ),
                   ],
@@ -230,19 +203,9 @@ class PurchaseResultScreen extends StatelessWidget {
                       style: const TextStyle(fontSize: 15),
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      height: 36,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(
-                              ClipboardData(text: result.shopStaffSummary));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('コピーしました')),
-                          );
-                        },
-                        icon: const Icon(Icons.copy, size: 16),
-                        label: const Text('コピー'),
-                      ),
+                    CopyableText(
+                      text: result.shopStaffSummary,
+                      iconSize: 16,
                     ),
                   ],
                 ),

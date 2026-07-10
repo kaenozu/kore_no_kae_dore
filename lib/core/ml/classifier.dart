@@ -10,3 +10,9 @@ abstract class Classifier {
   /// [imagePath] はローカルファイルのパス
   Future<ClassificationResult> classify(String imagePath);
 }
+
+/// デバッグ用：MockClassifier が固定ラベルを受け付けるためのmixin
+mixin FixedLabelMixin on Classifier {
+  String? fixedLabel;
+  double fixedScore = 0.85;
+}
