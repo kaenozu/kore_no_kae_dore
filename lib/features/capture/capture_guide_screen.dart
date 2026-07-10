@@ -10,6 +10,7 @@ import '../../core/ml/classifier.dart';
 import '../../core/models/capture_session.dart';
 import '../../core/models/rule_engine_output.dart';
 import '../../core/session/session_controller.dart';
+import 'classification_runner.dart';
 
 class CaptureGuideScreen extends StatefulWidget {
   final SessionController controller;
@@ -341,14 +342,11 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
       );
       if (picked == null) return;
 
-      final debugLabel = widget.debugLabelNotifier.value;
-      final classifier = widget.classifierNotifier.value;
-      if (classifier is FixedLabelMixin) {
-        classifier.fixedLabel = debugLabel;
-      }
-
-      debugPrint('classify using: ${classifier.runtimeType}');
-      final result = await classifier.classify(picked.path);
+      final runner = ClassificationRunner(widget.classifierNotifier.value);
+      final result = await runner.run(
+        picked.path,
+        debugLabel: widget.debugLabelNotifier.value,
+      );
       await widget.controller.processClassification(result);
 
       if (!mounted) return;
