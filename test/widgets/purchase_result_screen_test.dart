@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kore_no_kae_dore/core/models/match_level.dart';
 import 'package:kore_no_kae_dore/core/models/purchase_result.dart';
 import 'package:kore_no_kae_dore/features/result/purchase_result_screen.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -43,6 +44,7 @@ void main() {
         checkBeforeBuy: ['口金を確認', '明るさを確認'],
         shopStaffSummary: 'E26口金のLED電球を探しています。',
         createdAt: DateTime.now(),
+        matchLevel: MatchLevel.compatibleSpec,
       );
       final controller = StubSessionController(lastResult: result);
 
@@ -53,6 +55,7 @@ void main() {
       expect(find.text('E26 LED電球'), findsOneWidget);
       expect(find.text('口金を確認'), findsOneWidget);
       expect(find.text('E26口金のLED電球を探しています。'), findsAtLeast(1));
+      expect(find.text('条件一致候補'), findsOneWidget);
     });
 
     testWidgets('ホームに戻るボタンが表示される', (tester) async {
@@ -65,6 +68,7 @@ void main() {
         checkBeforeBuy: [],
         shopStaffSummary: '',
         createdAt: DateTime.now(),
+        matchLevel: MatchLevel.compatibleSpec,
       );
       final controller = StubSessionController(lastResult: result);
 

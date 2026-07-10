@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../models/capture_session.dart';
 import '../models/classification_result.dart';
 import '../models/evidence_state.dart';
+import '../models/match_level.dart';
 import '../models/purchase_result.dart';
 import '../models/rule_engine_output.dart';
 import '../rules/rule_engine.dart';
@@ -206,6 +207,9 @@ class SessionController {
         '${checks.dimmer == Mc.dimmerYes ? '調光器対応が必要です。' : ''}';
 
     final now = DateTime.now();
+    final level = _evidence!.manualFallback
+        ? MatchLevel.manualCandidate
+        : MatchLevel.compatibleSpec;
     _lastResult = PurchaseResult(
       id: _uuid.v4(),
       sessionId: _session!.id,
@@ -215,6 +219,7 @@ class SessionController {
       checkBeforeBuy: checkBeforeBuy,
       shopStaffSummary: summary,
       createdAt: now,
+      matchLevel: level,
     );
 
     _session!.status = 'completed';

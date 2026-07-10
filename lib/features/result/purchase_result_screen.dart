@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import '../../core/session/session_controller.dart';
+import '../../core/models/match_level.dart';
 import '../../shared/widgets/copyable_text.dart';
 
 class PurchaseResultScreen extends StatelessWidget {
@@ -33,6 +34,45 @@ class PurchaseResultScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // 商品候補の信頼度レベル
+            Card(
+              color: Colors.blue[50],
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.verified_user_outlined, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            result.matchLevel.label,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[900],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            result.matchLevel.caution,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blue[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // 注意文（常時表示）
             Card(
               color: Colors.orange[50],
@@ -193,7 +233,7 @@ class PurchaseResultScreen extends StatelessWidget {
                           Expanded(
                             child: Text(
                               'この条件で探してください。'
-                              '「これを買えばOK」ではありません。',
+                               '「この条件で探す」のが正解です。',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.red[700],

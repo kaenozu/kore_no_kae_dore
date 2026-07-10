@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kore_no_kae_dore/core/models/match_level.dart';
 import 'package:kore_no_kae_dore/core/models/purchase_result.dart';
 import 'package:kore_no_kae_dore/core/storage/purchase_result_storage.dart';
 import 'package:kore_no_kae_dore/features/history/history_screen.dart';
@@ -31,6 +32,7 @@ PurchaseResult _makeResult({required String id, String title = 'テスト商品'
     checkBeforeBuy: ['確認ポイント1'],
     shopStaffSummary: 'これはテスト用の商品です。',
     createdAt: DateTime(2026, 7, 10, 12, 0),
+    matchLevel: MatchLevel.compatibleSpec,
   );
 }
 

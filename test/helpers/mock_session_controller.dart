@@ -3,6 +3,7 @@
 import 'package:kore_no_kae_dore/core/models/capture_session.dart';
 import 'package:kore_no_kae_dore/core/models/classification_result.dart';
 import 'package:kore_no_kae_dore/core/models/evidence_state.dart';
+import 'package:kore_no_kae_dore/core/models/match_level.dart';
 import 'package:kore_no_kae_dore/core/models/purchase_result.dart';
 import 'package:kore_no_kae_dore/core/models/rule_engine_output.dart';
 import 'package:kore_no_kae_dore/core/session/session_controller.dart';
@@ -83,6 +84,7 @@ class StubSessionController extends SessionController {
         checkBeforeBuy: ['口金を確認'],
         shopStaffSummary: 'E26口金のLED電球',
         createdAt: DateTime.now(),
+        matchLevel: MatchLevel.compatibleSpec,
       );
     }
   }

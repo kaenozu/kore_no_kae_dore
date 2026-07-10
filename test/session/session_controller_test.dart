@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kore_no_kae_dore/core/models/capture_session.dart';
 import 'package:kore_no_kae_dore/core/models/classification_result.dart';
 import 'package:kore_no_kae_dore/core/models/evidence_state.dart';
+import 'package:kore_no_kae_dore/core/models/match_level.dart';
 import 'package:kore_no_kae_dore/core/models/rule_engine_output.dart';
 import 'package:kore_no_kae_dore/core/session/session_controller.dart';
 import 'package:kore_no_kae_dore/core/storage/session_storage.dart';
@@ -343,6 +344,47 @@ void main() {
       expect(controller.lastResult!.candidateTitle, contains('E17'));
       expect(controller.lastResult!.searchKeywords.any((k) => k.contains('E17')), true);
       expect(controller.lastResult!.shopStaffSummary, contains('E17'));
+    });
+
+    group('matchLevel', () {
+      test('通常フローは compatibleSpec になる', () async {
+        await controller.startSession('bulb');
+        controller.evidence!.fullViewCaptured = true;
+        controller.evidence!.baseViewCaptured = true;
+        controller.evidence!.labelViewCaptured = true;
+        controller.evidence!.fixtureChecked = true;
+
+        await controller.updateManualCheck(
+          baseSize: Mc.e26Candidate,
+          colorTone: Mc.bulbColor,
+          brightness: '60',
+          sealedFixture: Mc.sealedNo,
+          dimmer: Mc.dimmerNo,
+        );
+
+        expect(controller.lastResult, isNotNull);
+        expect(controller.lastResult!.matchLevel, MatchLevel.compatibleSpec);
+      });
+
+      test('manualFallback 有効時は manualCandidate になる', () async {
+        await controller.startSession('bulb');
+        controller.evidence!.manualFallback = true;
+        controller.evidence!.fullViewCaptured = true;
+        controller.evidence!.baseViewCaptured = true;
+        controller.evidence!.labelViewCaptured = true;
+        controller.evidence!.fixtureChecked = true;
+
+        await controller.updateManualCheck(
+          baseSize: Mc.e26Candidate,
+          colorTone: Mc.bulbColor,
+          brightness: '60',
+          sealedFixture: Mc.sealedNo,
+          dimmer: Mc.dimmerNo,
+        );
+
+        expect(controller.lastResult, isNotNull);
+        expect(controller.lastResult!.matchLevel, MatchLevel.manualCandidate);
+      });
     });
   });
 
