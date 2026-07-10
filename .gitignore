@@ -46,3 +46,4 @@ app.*.map.json
 
 # Android release signing
 /android/key.properties
+android/build/
