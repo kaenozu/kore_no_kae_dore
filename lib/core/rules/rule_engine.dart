@@ -10,6 +10,16 @@ import '../models/rule_engine_output.dart';
 class RuleEngine {
   /// EvidenceStateからルールエンジン出力を生成する
   RuleEngineOutput process(EvidenceState evidence, {int failedAttempts = 0}) {
+    // 全写真エビデンスが揃い、手動確認も完了している場合は購入結果を返す
+    // failedAttempts に関係なく、手動確認完了を優先する
+    if (evidence.fullViewCaptured &&
+        evidence.baseViewCaptured &&
+        evidence.labelViewCaptured &&
+        evidence.fixtureChecked &&
+        evidence.manualChecks.isComplete) {
+      return _generatePurchaseResult(evidence);
+    }
+
     if (failedAttempts >= 3) {
       return RuleEngineOutput(
         type: OutputType.manualCheck,

@@ -137,6 +137,11 @@ class SessionController {
     if (sealedFixture != null) _evidence!.manualChecks.sealedFixture = sealedFixture;
     if (dimmer != null) _evidence!.manualChecks.dimmer = dimmer;
 
+    // 手動確認が全項目完了した場合は failedAttempts をリセット
+    if (_evidence!.manualChecks.isComplete && _session != null) {
+      _session!.failedAttempts = 0;
+    }
+
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session?.failedAttempts ?? 0);
     _session!.updatedAt = DateTime.now();
     await storage.saveSession(_session!);

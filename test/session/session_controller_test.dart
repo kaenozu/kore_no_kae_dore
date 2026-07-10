@@ -244,6 +244,29 @@ void main() {
 
       expect(controller.lastOutput, isNull);
     });
+
+    test('failedAttempts>=3でも手動確認全完了でpurchaseResultに到達する', () async {
+      await controller.startSession('led_bulb');
+
+      controller.evidence!.fullViewCaptured = true;
+      controller.evidence!.baseViewCaptured = true;
+      controller.evidence!.labelViewCaptured = true;
+      controller.evidence!.fixtureChecked = true;
+      controller.session!.failedAttempts = 3;
+
+      await controller.updateManualCheck(
+        baseSize: Mc.e26Candidate,
+        colorTone: Mc.bulbColor,
+        brightness: '60',
+        sealedFixture: Mc.sealedNo,
+        dimmer: Mc.dimmerNo,
+      );
+
+      expect(controller.lastOutput!.type, OutputType.purchaseResult);
+      expect(controller.lastResult, isNotNull);
+      expect(controller.session!.failedAttempts, 0);
+      expect(controller.session!.status, 'completed');
+    });
   });
 
   group('abandonSession()', () {
