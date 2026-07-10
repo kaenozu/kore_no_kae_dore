@@ -57,25 +57,24 @@ class _HomeWithHistory extends StatefulWidget {
 
 class _HomeWithHistoryState extends State<_HomeWithHistory> {
   final _controller = SessionController();
-  late final Classifier _classifier;
+  Classifier _classifier = MockClassifier();
   final _debugLabelNotifier = ValueNotifier<String?>(null);
   bool _hasResumeSession = false;
 
   @override
   void initState() {
     super.initState();
-    _initClassifier();
+    _tryInitGemini();
     _checkResumeSession();
   }
 
-  Future<void> _initClassifier() async {
+  Future<void> _tryInitGemini() async {
     final gemini = GeminiClassifier();
     try {
       await gemini.init();
       _classifier = gemini;
     } catch (e) {
       debugPrint('Gemini unavailable, using MockClassifier: $e');
-      _classifier = MockClassifier();
     }
   }
 

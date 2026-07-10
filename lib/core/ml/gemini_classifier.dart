@@ -16,7 +16,8 @@ import 'classifier.dart';
 
 /// Google AI Gemini APIを使った画像分類器
 ///
-/// APIキーは `--dart-define=GEMINI_API_KEY=xxx` で渡す。
+/// APIキーは `--dart-define=GEMINI_API_KEY=xxx` でビルド時に注入する。
+/// 注意: キーはAPK/IPAに埋め込まれる（本番はApp Check/Proxy必須）。
 /// 未設定の場合は [ClassifierInitException] を throw し、
 /// 呼び出し元で MockClassifier にフォールバックする。
 ///
@@ -81,7 +82,11 @@ class GeminiClassifier extends Classifier with FixedLabelMixin {
       return _buildResult(fixedLabel!, fixedScore);
     }
 
-    final imageBytes = await File(imagePath).readAsBytes();
+    final file = File(imagePath);
+    if (!await file.exists()) {
+      return _buildResult(ImageLabel.unknownOther.value, 0.0);
+    }
+    final imageBytes = await file.readAsBytes();
 
     final prompt = '''
 あなたは電球の写真を分析するアシスタントです。
@@ -110,7 +115,7 @@ JSON形式で回答してください:
         TextPart(prompt),
         DataPart('image/jpeg', imageBytes),
       ]),
-    ]);
+    ]).timeout(const Duration(seconds: 30));
 
     final text = resp.text;
     if (text == null || text.isEmpty) {
@@ -124,7 +129,8 @@ JSON形式で回答してください:
     try {
       final json = _extractJson(raw);
       final label = json['label'] as String? ?? ImageLabel.unknownOther.value;
-      final score = (json['score'] as num?)?.toDouble() ?? 0.0;
+      final rawScore = (json['score'] as num?)?.toDouble() ?? 0.0;
+      final score = rawScore.clamp(0.0, 1.0);
       return _buildResult(label, score);
     } catch (e) {
       debugPrint('GeminiClassifier: failed to parse response ($e)');
@@ -150,7 +156,7 @@ JSON形式で回答してください:
     return ClassificationResult(
       id: const Uuid().v4(),
       imageId: const Uuid().v4(),
-      modelVersion: 'gemini-${_activeModel ?? "unknown"}',
+      modelVersion: _activeModel ?? 'unknown',
       predictions: predictions,
       createdAt: DateTime.now(),
     );
