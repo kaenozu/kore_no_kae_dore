@@ -233,7 +233,7 @@ class PurchaseResultScreen extends StatelessWidget {
                           Expanded(
                             child: Text(
                               'この条件で探してください。'
-                               '「この条件で探す」のが正解です。',
+                               'この条件を目安に探してください。',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.red[700],
