@@ -1,6 +1,6 @@
 // lib/app.dart
 // アプリケーションのルートウィジェット
-// 画面遷移とSessionControllerの管理を担当
+// 画面遷移とSessionControllerの管理を担当。起動時に進行中セッションを確認
 // 関連: 全画面
 
 import 'package:flutter/material.dart';
@@ -55,6 +55,31 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
   final _controller = SessionController();
   final _classifier = MockClassifier();
   final _debugLabelNotifier = ValueNotifier<String?>(null);
+  bool _hasResumeSession = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkResumeSession();
+  }
+
+  Future<void> _checkResumeSession() async {
+    final session = await _controller.storage.findLatestInProgress();
+    if (session != null && mounted) {
+      setState(() => _hasResumeSession = true);
+    }
+  }
+
+  Future<void> _onResume() async {
+    final session = await _controller.storage.findLatestInProgress();
+    if (session == null) return;
+    final evidence = await _controller.storage.loadEvidence(session.id);
+    if (evidence == null) return;
+    await _controller.loadSession(session, evidence);
+    if (!mounted) return;
+    setState(() => _hasResumeSession = false);
+    Navigator.of(context).pushNamed('/capture');
+  }
 
   @override
   void dispose() {
@@ -82,6 +107,7 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                   onHistory: () {
                     Navigator.of(context).pushNamed('/history');
                   },
+                  onResume: _hasResumeSession ? _onResume : null,
                 );
               case '/capture':
                 return CaptureGuideScreen(

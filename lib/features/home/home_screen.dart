@@ -1,19 +1,60 @@
 // lib/features/home/home_screen.dart
 // ホーム画面：カテゴリ選択と履歴リンクを表示
+// 進行中セッションの復元ダイアログ表示機能付き
 // MVPでは電球のみ本実装、電池/フィルターはβ表記
 // 関連: capture_guide_screen.dart, history_screen.dart
 
 import 'package:flutter/material.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final VoidCallback onStartBulb;
   final VoidCallback onHistory;
+  final VoidCallback? onResume;
 
   const HomeScreen({
     super.key,
     required this.onStartBulb,
     required this.onHistory,
+    this.onResume,
   });
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.onResume != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showResumeDialog());
+    }
+  }
+
+  void _showResumeDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('続きから始めますか？'),
+        content: const Text('進行中のセッションがあります。前回の続きから始めますか？'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('新しく始める'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              widget.onResume?.call();
+            },
+            child: const Text('続きから'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +64,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
-            onPressed: onHistory,
+            onPressed: widget.onHistory,
             tooltip: '履歴',
           ),
         ],
@@ -48,7 +89,7 @@ class HomeScreen extends StatelessWidget {
               title: '電球',
               subtitle: 'LED電球・白熱電球の交換',
               isBeta: false,
-              onTap: onStartBulb,
+              onTap: widget.onStartBulb,
             ),
             const SizedBox(height: 12),
             _CategoryCard(

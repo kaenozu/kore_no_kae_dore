@@ -18,7 +18,7 @@ import '../storage/session_storage.dart';
 class SessionController extends ChangeNotifier {
   final _uuid = const Uuid();
   final _ruleEngine = RuleEngine();
-  final _sessionStorage = SessionStorage();
+  final storage = SessionStorage();
   final _resultStorage = PurchaseResultStorage();
 
   CaptureSession? _session;
@@ -32,6 +32,17 @@ class SessionController extends ChangeNotifier {
   RuleEngineOutput? get lastOutput => _lastOutput;
   PurchaseResult? get lastResult => _lastResult;
   ClassificationResult? get lastClassification => _lastClassification;
+
+  /// 保存済みのセッションとエビデンスを読み込む
+  Future<void> loadSession(CaptureSession session, EvidenceState evidence) async {
+    _session = session;
+    _evidence = evidence;
+    _lastOutput = _ruleEngine.process(evidence, failedAttempts: session.failedAttempts);
+    if (_lastOutput!.type == OutputType.purchaseResult) {
+      _lastResult = await _resultStorage.loadResult(session.resultId ?? '');
+    }
+    notifyListeners();
+  }
 
   /// 新しいセッションを開始する
   Future<void> startSession(String category) async {
@@ -48,7 +59,8 @@ class SessionController extends ChangeNotifier {
     _lastOutput = null;
     _lastResult = null;
     _lastClassification = null;
-    await _sessionStorage.saveSession(_session!);
+    await storage.saveSession(_session!);
+    await storage.saveEvidence(_evidence!);
     notifyListeners();
   }
 
@@ -63,7 +75,8 @@ class SessionController extends ChangeNotifier {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.handlePoorQuality(label);
       _session!.updatedAt = DateTime.now();
-      await _sessionStorage.saveSession(_session!);
+      await storage.saveSession(_session!);
+      await storage.saveEvidence(_evidence!);
       notifyListeners();
       return;
     }
@@ -72,7 +85,8 @@ class SessionController extends ChangeNotifier {
       _session!.failedAttempts++;
       _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session!.failedAttempts);
       _session!.updatedAt = DateTime.now();
-      await _sessionStorage.saveSession(_session!);
+      await storage.saveSession(_session!);
+      await storage.saveEvidence(_evidence!);
       notifyListeners();
       return;
     }
@@ -108,7 +122,8 @@ class SessionController extends ChangeNotifier {
 
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session!.failedAttempts);
     _session!.updatedAt = DateTime.now();
-    await _sessionStorage.saveSession(_session!);
+    await storage.saveSession(_session!);
+    await storage.saveEvidence(_evidence!);
     notifyListeners();
   }
 
@@ -130,7 +145,8 @@ class SessionController extends ChangeNotifier {
 
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session?.failedAttempts ?? 0);
     _session!.updatedAt = DateTime.now();
-    await _sessionStorage.saveSession(_session!);
+    await storage.saveSession(_session!);
+    await storage.saveEvidence(_evidence!);
 
     if (_lastOutput!.type == OutputType.purchaseResult) {
       await _finalizeResult();
@@ -199,7 +215,7 @@ class SessionController extends ChangeNotifier {
     _session!.resultId = _lastResult!.id;
     _session!.updatedAt = now;
 
-    await _sessionStorage.saveSession(_session!);
+    await storage.saveSession(_session!);
     await _resultStorage.saveResult(_lastResult!);
   }
 
@@ -208,7 +224,7 @@ class SessionController extends ChangeNotifier {
     if (_session != null) {
       _session!.status = 'abandoned';
       _session!.updatedAt = DateTime.now();
-      await _sessionStorage.saveSession(_session!);
+      await storage.saveSession(_session!);
     }
     _session = null;
     _evidence = null;
