@@ -121,6 +121,13 @@ class SessionController {
     await storage.saveEvidence(_evidence!);
   }
 
+  /// 手動フォールバックを有効にする（写真エビデンス不足でもpurchaseResultへ進める）
+  Future<void> setManualFallback() async {
+    if (_evidence == null) return;
+    _evidence!.manualFallback = true;
+    await storage.saveEvidence(_evidence!);
+  }
+
   /// 手動確認の値を更新する
   Future<void> updateManualCheck({
     String? baseSize,

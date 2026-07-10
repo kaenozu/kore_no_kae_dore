@@ -37,7 +37,14 @@ class GeminiModelNames {
 /// フォールバックチェーン（init時に順に試行）:
 /// {@macro GeminiModelNames.candidates}
 class GeminiClassifier extends Classifier with FixedLabelMixin {
-  static const _candidates = GeminiModelNames.candidates;
+  static List<String> get _candidates {
+    // --dart-define=GEMINI_MODEL=xxx で優先モデル指定可能
+    final overridden = const String.fromEnvironment('GEMINI_MODEL');
+    if (overridden.isNotEmpty) {
+      return [overridden, ...GeminiModelNames.candidates];
+    }
+    return GeminiModelNames.candidates;
+  }
 
   GenerativeModel? _model;
   String? _activeModel;

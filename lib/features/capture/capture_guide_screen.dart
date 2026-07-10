@@ -97,36 +97,56 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
               builder: (context, status, _) {
                 final isGemini = status.contains('Gemini');
                 final isMock = status.contains('Mock');
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isGemini
-                        ? Colors.green[50]
-                        : isMock
-                            ? Colors.orange[50]
-                            : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isGemini
-                            ? Icons.auto_awesome
-                            : Icons.info_outline,
-                        size: 14,
-                        color: isGemini ? Colors.green[700] : Colors.orange[700],
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isGemini
+                            ? Colors.green[50]
+                            : isMock
+                                ? Colors.orange[50]
+                                : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      const SizedBox(width: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isGemini
+                                ? Icons.auto_awesome
+                                : Icons.info_outline,
+                            size: 14,
+                            color: isGemini ? Colors.green[700] : Colors.orange[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            status,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isGemini ? Colors.green[700] : Colors.orange[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isGemini) ...[
+                      const SizedBox(height: 4),
                       Text(
-                        status,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isGemini ? Colors.green[700] : Colors.orange[700],
-                        ),
+                        'Gemini判定を使う場合、選択した画像はAI判定のため外部APIへ送信されます。'
+                        'APIキー未設定時はMock判定のみで、画像は外部送信されません。',
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                       ),
                     ],
-                  ),
+                    if (isMock) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '開発用の擬似判定です。画像は外部APIへ送信されません。',
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ],
                 );
               },
             ),
@@ -245,7 +265,11 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
             TextButton(
               onPressed: _isAnalyzing
                   ? null
-                  : () => Navigator.pushNamed(context, '/manual_check'),
+                  : () async {
+                      await widget.controller.setManualFallback();
+                      if (!context.mounted) return;
+                      Navigator.pushNamed(context, '/manual_check');
+                    },
               child: const Text('写真ではうまく撮れない → 手動で確認'),
             ),
             if (widget.controller.lastOutput?.type == OutputType.nextInstruction &&
@@ -335,8 +359,13 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Image capture failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('画像の取得に失敗しました: $e')),
+        const SnackBar(
+          content: Text(
+            '画像の確認に失敗しました。もう一度撮影するか、手動確認を使ってください。',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isAnalyzing = false);

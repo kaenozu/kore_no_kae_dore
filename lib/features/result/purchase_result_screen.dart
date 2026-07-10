@@ -45,8 +45,8 @@ class PurchaseResultScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'これは「候補」です。購入前に必ず現物やパッケージで'
-                        '口金サイズを確認してください。',
+                        'これは「候補」です。「これでOK」ではありません。'
+                        '購入前に必ず現物やパッケージで各項目を確認してください。',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.orange[900],
@@ -126,6 +126,14 @@ class PurchaseResultScreen extends StatelessWidget {
                         child: CopyableText(text: keyword),
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'このキーワードで通販サイトを検索してください。',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -169,6 +177,32 @@ class PurchaseResultScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning_amber,
+                              size: 14, color: Colors.red[700]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'この条件で探してください。'
+                              '「これを買えばOK」ではありません。',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.red[700],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -206,6 +240,14 @@ class PurchaseResultScreen extends StatelessWidget {
                     CopyableText(
                       text: result.shopStaffSummary,
                       iconSize: 16,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'この文面をコピーして店員さんに見せてください。',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
                     ),
                   ],
                 ),

@@ -31,6 +31,24 @@ class StubClassifier extends Classifier with FixedLabelMixin {
   }
 }
 
+class TrackingClassifier extends Classifier {
+  int classifyCallCount = 0;
+  String? lastImagePath;
+
+  @override
+  Future<ClassificationResult> classify(String imagePath) async {
+    classifyCallCount++;
+    lastImagePath = imagePath;
+    return ClassificationResult(
+      id: 'tracking',
+      imageId: 'tracking',
+      modelVersion: 'tracking',
+      predictions: [Prediction(label: 'bulb_full_view', score: 0.95)],
+      createdAt: DateTime.now(),
+    );
+  }
+}
+
 Widget _wrap(Widget child) {
   return MaterialApp(
     home: child,
@@ -129,7 +147,7 @@ void main() {
       expect(find.text('撮影済み → 次に進む'), findsOneWidget);
     });
 
-    testWidgets('classifierNotifier の値変更が撮影時の分類器に反映される', (tester) async {
+    testWidgets('classifierNotifier の値変更が状態に反映される', (tester) async {
       final session = CaptureSession(
         id: 'test-cg-swap',
         category: 'bulb',
@@ -152,12 +170,13 @@ void main() {
       await tester.pump();
 
       // 表示後、別のclassifierに入れ替え
-      final swapped = StubClassifier();
+      final swapped = TrackingClassifier();
       notifier.value = swapped;
       await tester.pump();
 
       // notifierの現在値がswappedであることを確認
-      expect(notifier.value, equals(swapped));
+      expect(notifier.value, same(swapped));
+      expect(notifier.value is TrackingClassifier, true);
     });
   });
 }

@@ -8,7 +8,7 @@
         android:maxSdkVersion="32" />
     <!-- Android 13以上は photo picker を使うため READ_MEDIA_IMAGES は不要 -->
     <application
-        android:label="kore_no_kae_dore"
+        android:label="これの替えどれ？"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

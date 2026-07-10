@@ -19,6 +19,20 @@ class RuleEngine {
       );
     }
 
+    // 手動フォールバック有効時、写真エビデンスをスキップ
+    if (evidence.manualFallback) {
+      if (evidence.manualChecks.isComplete) {
+        return _generatePurchaseResult(evidence, manualFallback: true);
+      }
+      // manualChecks未完了→手動確認画面へ
+      return RuleEngineOutput(
+        type: OutputType.manualCheck,
+        title: '残りの項目を確認してください',
+        message: '以下の情報が不足しています。わかる範囲で答えてください。',
+        warnings: ['写真での判定は参考値です'],
+      );
+    }
+
     if (!evidence.fullViewCaptured) {
       return RuleEngineOutput(
         type: OutputType.nextInstruction,
@@ -103,17 +117,28 @@ class RuleEngine {
     );
   }
 
-  RuleEngineOutput _generatePurchaseResult(EvidenceState evidence) {
+  RuleEngineOutput _generatePurchaseResult(EvidenceState evidence, {bool manualFallback = false}) {
+    final warnings = <String>[
+      'これは「候補」であり、確定的な商品特定ではありません',
+      '購入前に口金サイズを実物で確認してください',
+      'この情報は参考用です。メーカーや販売店の情報を優先してください',
+    ];
+    if (manualFallback) {
+      warnings.insertAll(0, [
+        '写真確認が不足しています。購入前に現物を必ず確認してください',
+        '口金サイズ・明るさ・光色・器具対応はパッケージまたは販売店で確認してください',
+        'この結果は手動入力に基づく候補です',
+      ]);
+    }
     return RuleEngineOutput(
       type: OutputType.purchaseResult,
       title: '購入候補',
-      message: '写真と確認内容から、以下の商品が候補です。'
-          '購入前に現物やパッケージで必ずご確認ください。',
-      warnings: [
-        'これは「候補」であり、確定的な商品特定ではありません',
-        '購入前に口金サイズを実物で確認してください',
-        'この情報は参考用です。メーカーや販売店の情報を優先してください',
-      ],
+      message: manualFallback
+          ? '手動で入力いただいた情報から、以下の商品が候補です。'
+              '購入前に現物やパッケージで必ずご確認ください。'
+          : '写真と確認内容から、以下の商品が候補です。'
+              '購入前に現物やパッケージで必ずご確認ください。',
+      warnings: warnings,
     );
   }
 }

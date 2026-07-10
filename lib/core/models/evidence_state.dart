@@ -72,6 +72,7 @@ class EvidenceState {
   bool labelViewCaptured;
   bool fixtureChecked;
   ManualChecks manualChecks;
+  bool manualFallback; // 手動フォールバック有効時、写真エビデンス不足でもpurchaseResultへ
 
   EvidenceState({
     required this.sessionId,
@@ -81,6 +82,7 @@ class EvidenceState {
     this.labelViewCaptured = false,
     this.fixtureChecked = false,
     ManualChecks? manualChecks,
+    this.manualFallback = false,
   }) : manualChecks = manualChecks ?? ManualChecks();
 
   Map<String, dynamic> toJson() => {
@@ -91,6 +93,7 @@ class EvidenceState {
         'labelViewCaptured': labelViewCaptured,
         'fixtureChecked': fixtureChecked,
         'manualChecks': manualChecks.toJson(),
+        'manualFallback': manualFallback,
       };
 
   factory EvidenceState.fromJson(Map<String, dynamic> json) => EvidenceState(
@@ -103,5 +106,6 @@ class EvidenceState {
         manualChecks: json['manualChecks'] != null
             ? ManualChecks.fromJson(json['manualChecks'] as Map<String, dynamic>)
             : ManualChecks(),
+        manualFallback: json['manualFallback'] as bool? ?? false,
       );
 }

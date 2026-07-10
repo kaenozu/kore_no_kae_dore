@@ -109,6 +109,33 @@ void main() {
 
       expect(output.type, OutputType.purchaseResult);
     });
+
+    test('manualFallback 有効 + manualChecks 完了で写真不足でも purchaseResult を返す', () {
+      final evidence = EvidenceState(sessionId: sessionId);
+      // 写真は全く撮影していない
+      evidence.manualFallback = true;
+      evidence.manualChecks.baseSize = Mc.e26Candidate;
+      evidence.manualChecks.colorTone = Mc.bulbColor;
+      evidence.manualChecks.brightness = '60';
+      evidence.manualChecks.sealedFixture = Mc.sealedNo;
+      evidence.manualChecks.dimmer = Mc.dimmerNo;
+
+      final output = engine.process(evidence);
+
+      expect(output.type, OutputType.purchaseResult);
+      expect(output.warnings.any((w) => w.contains('写真確認が不足')), true);
+      expect(output.warnings.any((w) => w.contains('手動入力に基づく')), true);
+    });
+
+    test('manualFallback 有効でも manualChecks 未完了なら manualCheck を返す', () {
+      final evidence = EvidenceState(sessionId: sessionId);
+      evidence.manualFallback = true;
+      // manualChecks 未完了
+
+      final output = engine.process(evidence);
+
+      expect(output.type, OutputType.manualCheck);
+    });
   });
 
   group('RuleEngine.handlePoorQuality()', () {
