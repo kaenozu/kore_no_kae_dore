@@ -96,6 +96,12 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
     Navigator.of(context).pushNamed('/capture');
   }
 
+  Future<void> _onStartNew() async {
+    await _controller.abandonSession();
+    if (!mounted) return;
+    setState(() => _hasResumeSession = false);
+  }
+
   @override
   void dispose() {
     _debugLabelNotifier.dispose();
@@ -127,6 +133,7 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                     Navigator.of(context).pushNamed('/history');
                   },
                   onResume: _hasResumeSession ? _onResume : null,
+                  onStartNew: _hasResumeSession ? _onStartNew : null,
                 );
               case '/capture':
                 return CaptureGuideScreen(

@@ -10,12 +10,14 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback onStartBulb;
   final VoidCallback onHistory;
   final VoidCallback? onResume;
+  final VoidCallback? onStartNew;
 
   const HomeScreen({
     super.key,
     required this.onStartBulb,
     required this.onHistory,
     this.onResume,
+    this.onStartNew,
   });
 
   @override
@@ -23,6 +25,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _resumeDialogShown = false;
+
   @override
   void initState() {
     super.initState();
@@ -31,7 +35,20 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // onResume が後から設定された場合（非同期ロード完了後）にダイアログを表示
+    if (oldWidget.onResume == null &&
+        widget.onResume != null &&
+        !_resumeDialogShown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showResumeDialog());
+    }
+  }
+
   void _showResumeDialog() {
+    if (_resumeDialogShown) return;
+    _resumeDialogShown = true;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -41,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
+              widget.onStartNew?.call();
             },
             child: const Text('新しく始める'),
           ),
