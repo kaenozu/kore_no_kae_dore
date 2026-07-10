@@ -18,7 +18,7 @@ enum OutputType {
     'next_instruction' => OutputType.nextInstruction,
     'manual_check' => OutputType.manualCheck,
     'purchase_result' => OutputType.purchaseResult,
-    _ => throw ArgumentError('Unknown OutputType: $s'),
+    _ => OutputType.nextInstruction,
   };
 }
 

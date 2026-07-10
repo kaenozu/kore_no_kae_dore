@@ -3,6 +3,7 @@
 // MockClassifierを使ったデバッグ用ラベル選択機能付き
 // 関連: mock_classifier.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/ml/classifier.dart';
@@ -219,42 +220,44 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
               ),
             ],
 
-            // デバッグ：分類ラベル手動選択
-            const SizedBox(height: 8),
-            Card(
-              color: Colors.amber[50],
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'デバッグ: 分類ラベル選択',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButton<String>(
-                      value: widget.debugLabelNotifier.value,
-                      isExpanded: true,
-                      items: const [
-                        DropdownMenuItem(value: 'bulb_full_view', child: Text('電球全体')),
-                        DropdownMenuItem(value: 'bulb_base_view', child: Text('口金')),
-                        DropdownMenuItem(value: 'bulb_label_side_view', child: Text('側面印字')),
-                        DropdownMenuItem(value: 'fixture_socket_view', child: Text('器具')),
-                        DropdownMenuItem(value: 'bulb_package_view', child: Text('パッケージ')),
-                        DropdownMenuItem(value: 'unknown_too_dark', child: Text('暗い')),
-                        DropdownMenuItem(value: 'unknown_blurry', child: Text('ぼやけ')),
-                        DropdownMenuItem(value: 'unknown_too_far', child: Text('遠い')),
-                        DropdownMenuItem(value: 'unknown_other', child: Text('その他不明')),
-                      ],
-                      onChanged: (val) {
-                        widget.debugLabelNotifier.value = val;
-                      },
-                    ),
-                  ],
+            // デバッグ：分類ラベル手動選択（releaseでは非表示）
+            if (kDebugMode) ...[
+              const SizedBox(height: 8),
+              Card(
+                color: Colors.amber[50],
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'デバッグ: 分類ラベル選択',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButton<String>(
+                        value: widget.debugLabelNotifier.value,
+                        isExpanded: true,
+                        items: const [
+                          DropdownMenuItem(value: 'bulb_full_view', child: Text('電球全体')),
+                          DropdownMenuItem(value: 'bulb_base_view', child: Text('口金')),
+                          DropdownMenuItem(value: 'bulb_label_side_view', child: Text('側面印字')),
+                          DropdownMenuItem(value: 'fixture_socket_view', child: Text('器具')),
+                          DropdownMenuItem(value: 'bulb_package_view', child: Text('パッケージ')),
+                          DropdownMenuItem(value: 'unknown_too_dark', child: Text('暗い')),
+                          DropdownMenuItem(value: 'unknown_blurry', child: Text('ぼやけ')),
+                          DropdownMenuItem(value: 'unknown_too_far', child: Text('遠い')),
+                          DropdownMenuItem(value: 'unknown_other', child: Text('その他不明')),
+                        ],
+                        onChanged: (val) {
+                          widget.debugLabelNotifier.value = val;
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),

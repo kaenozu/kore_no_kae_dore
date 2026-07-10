@@ -151,7 +151,11 @@ class SessionController {
     if (_evidence == null || _session == null) return;
 
     final checks = _evidence!.manualChecks;
-    final baseStr = checks.baseSize.startsWith('e26') ? 'E26' : 'E17';
+    final baseStr = checks.baseSize == Mc.unknown
+        ? 'E26'
+        : checks.baseSize.startsWith('e26')
+            ? 'E26'
+            : 'E17';
     final brightnessStr =
         checks.brightness != Mc.unknown ? ' ${checks.brightness}形相当' : '';
     String colorStr;

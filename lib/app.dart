@@ -91,6 +91,11 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
   Widget build(BuildContext context) {
     return Navigator(
       initialRoute: '/home',
+      // ignore: deprecated_member_use
+      onPopPage: (route, result) {
+        if (route.settings.name == '/home') return false;
+        return route.didPop(result);
+      },
       onGenerateRoute: (settings) {
         return MaterialPageRoute(
           settings: settings,
