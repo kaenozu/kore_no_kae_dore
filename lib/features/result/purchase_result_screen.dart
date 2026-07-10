@@ -1,11 +1,14 @@
 // lib/features/result/purchase_result_screen.dart
-// 購入結果画面：候補名、検索ワード、買う前チェック、店員用要約を表示
+// 購入結果画面：候補名、検索ワード、買う前チェック、店員用要約、商品候補を表示
 // 断定表現を使わないことに注意
-// 関連: purchase_result.dart, home_screen.dart
+// 関連: purchase_result.dart, home_screen.dart, product_candidate_provider.dart
 
 import 'package:flutter/material.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/models/match_level.dart';
+import '../../core/models/product_candidate.dart';
+import '../../core/models/product_search_query.dart';
+import '../../core/services/product_candidate_provider.dart';
 import '../../shared/widgets/copyable_text.dart';
 
 class PurchaseResultScreen extends StatelessWidget {
@@ -232,7 +235,6 @@ class PurchaseResultScreen extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              'この条件で探してください。'
                                'この条件を目安に探してください。',
                               style: TextStyle(
                                 fontSize: 11,
@@ -247,56 +249,178 @@ class PurchaseResultScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+             const SizedBox(height: 16),
 
-            // 店員に見せる要約
-            Card(
-              color: Colors.green[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.store, color: Colors.green),
-                        const SizedBox(width: 8),
-                        const Text(
-                          '店員さんに見せる',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      result.shopStaffSummary,
-                      style: const TextStyle(fontSize: 15),
-                    ),
-                    const SizedBox(height: 8),
-                    CopyableText(
-                      text: result.shopStaffSummary,
-                      iconSize: 16,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'この文面をコピーして店員さんに見せてください。',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+             // 商品候補（デモ）
+             Column(
+               crossAxisAlignment: CrossAxisAlignment.stretch,
+               children: [
+                 const Text(
+                   '商品候補',
+                   style: TextStyle(
+                     fontSize: 16,
+                     fontWeight: FontWeight.bold,
+                   ),
+                 ),
+                 const SizedBox(height: 4),
+                 Text(
+                   '商品候補には、将来的に広告リンクを含む場合があります。現在はデモ表示です。',
+                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                 ),
+                 const SizedBox(height: 12),
+                 FutureBuilder<List<ProductCandidate>>(
+                   future: MockProductCandidateProvider().search(
+                     ProductSearchQuery(
+                       keyword: result.candidateTitle,
+                       category: 'bulb',
+                       matchLevel: result.matchLevel,
+                       conditions: const {},
+                     ),
+                   ),
+                   builder: (context, snapshot) {
+                     if (!snapshot.hasData) {
+                       return const Center(
+                         child: Padding(
+                           padding: EdgeInsets.all(16),
+                           child: CircularProgressIndicator(strokeWidth: 2),
+                         ),
+                       );
+                     }
 
-            // ホームに戻る
-            SizedBox(
+                     final candidates = snapshot.data!;
+
+                     return Column(
+                       children: [
+                         ...candidates.map(
+                           (c) => Card(
+                             child: Padding(
+                               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                               child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                   Row(
+                                     children: [
+                                       Expanded(
+                                         child: Text(
+                                           c.title,
+                                           style: const TextStyle(
+                                             fontSize: 16,
+                                             fontWeight: FontWeight.bold,
+                                           ),
+                                         ),
+                                       ),
+                                       if (c.price != null)
+                                         Text(
+                                           '¥${c.price!}',
+                                           style: TextStyle(
+                                             fontSize: 16,
+                                             fontWeight: FontWeight.bold,
+                                             color: Theme.of(context).colorScheme.primary,
+                                           ),
+                                         ),
+                                     ],
+                                   ),
+                                   const SizedBox(height: 6),
+                                   Container(
+                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                     decoration: BoxDecoration(
+                                       color: Colors.blue[50],
+                                       borderRadius: BorderRadius.circular(4),
+                                     ),
+                                     child: Text(
+                                       c.matchLevel.label,
+                                       style: TextStyle(
+                                         fontSize: 12,
+                                         color: Colors.blue[800],
+                                         fontWeight: FontWeight.bold,
+                                       ),
+                                     ),
+                                   ),
+                                   const SizedBox(height: 4),
+                                   Text(
+                                     c.matchLevel.caution,
+                                     style: TextStyle(
+                                       fontSize: 12,
+                                       color: Colors.blue[700],
+                                     ),
+                                   ),
+                                   const SizedBox(height: 8),
+                                   SizedBox(
+                                     width: double.infinity,
+                                     child: OutlinedButton.icon(
+                                       onPressed: () {
+                                         ScaffoldMessenger.of(context).showSnackBar(
+                                           const SnackBar(
+                                             content: Text('商品リンク連携は今後対応予定です'),
+                                           ),
+                                         );
+                                       },
+                                       icon: const Icon(Icons.open_in_new, size: 16),
+                                       label: const Text('商品ページを見る（デモ）'),
+                                     ),
+                                   ),
+                                 ],
+                               ),
+                             ),
+                           ),
+                         ),
+                         const SizedBox(height: 12),
+                       ],
+                     );
+                   },
+                 ),
+               ],
+             ),
+              const SizedBox(height: 24),
+
+             // 店員に見せる要約
+             Card(
+               color: Colors.green[50],
+               child: Padding(
+                 padding: const EdgeInsets.all(16),
+                 child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Row(
+                       children: [
+                         const Icon(Icons.store, color: Colors.green),
+                         const SizedBox(width: 8),
+                         const Text(
+                           '店員さんに見せる',
+                           style: TextStyle(
+                             fontSize: 14,
+                             fontWeight: FontWeight.bold,
+                             color: Colors.green,
+                           ),
+                         ),
+                       ],
+                     ),
+                     const SizedBox(height: 8),
+                     Text(
+                       result.shopStaffSummary,
+                       style: const TextStyle(fontSize: 15),
+                     ),
+                     const SizedBox(height: 8),
+                     CopyableText(
+                       text: result.shopStaffSummary,
+                       iconSize: 16,
+                     ),
+                     const SizedBox(height: 4),
+                     Text(
+                       'この文面をコピーして店員さんに見せてください。',
+                       style: TextStyle(
+                         fontSize: 12,
+                         color: Colors.grey[500],
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
+             ),
+             const SizedBox(height: 24),
+
+             // ホームに戻る
+             SizedBox(
               height: 56,
               child: ElevatedButton.icon(
                 onPressed: () {
