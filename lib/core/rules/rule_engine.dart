@@ -10,6 +10,7 @@ import '../models/rule_engine_output.dart';
 class RuleEngine {
   /// EvidenceStateからルールエンジン出力を生成する
   RuleEngineOutput process(EvidenceState evidence, {int failedAttempts = 0}) {
+    // 3回失敗後は手動確認へ誘導する
     if (failedAttempts >= 3 && !evidence.manualChecks.isComplete) {
       return RuleEngineOutput(
         type: OutputType.manualCheck,
@@ -17,6 +18,11 @@ class RuleEngine {
         message: '写真での確認が難しいようです。手動で項目を確認してください。',
         warnings: ['写真での判定は参考値です'],
       );
+    }
+
+    // 3回失敗 + 手動確認完了 → 写真不足でもpurchaseResultへ進める
+    if (failedAttempts >= 3 && evidence.manualChecks.isComplete) {
+      return _generatePurchaseResult(evidence, manualFallback: true);
     }
 
     // 手動フォールバック有効時、写真エビデンスをスキップ

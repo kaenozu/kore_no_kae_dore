@@ -265,6 +265,38 @@ void main() {
       expect(controller.lastOutput!.type, OutputType.purchaseResult);
       expect(controller.lastResult, isNotNull);
     });
+
+    test('手動確認入力後にcontrollerを作り直すとEvidence値が復元される', () async {
+      await controller.startSession('led_bulb');
+      controller.evidence!.fullViewCaptured = true;
+      controller.evidence!.baseViewCaptured = true;
+      controller.evidence!.labelViewCaptured = true;
+      controller.evidence!.fixtureChecked = true;
+
+      await controller.updateManualCheck(
+        baseSize: Mc.userSelectedE26,
+        colorTone: Mc.neutralWhite,
+        brightness: '100',
+        sealedFixture: Mc.sealedYes,
+        dimmer: Mc.dimmerYes,
+      );
+
+      // 新しいコントローラで読み込み
+      final sessionId = controller.session!.id;
+      final newController = SessionController();
+      final session = await newController.storage.loadSession(sessionId);
+      final evidence = await newController.storage.loadEvidence(sessionId);
+      expect(session, isNotNull);
+      expect(evidence, isNotNull);
+
+      await newController.loadSession(session!, evidence!);
+
+      expect(newController.evidence!.manualChecks.baseSize, Mc.userSelectedE26);
+      expect(newController.evidence!.manualChecks.colorTone, Mc.neutralWhite);
+      expect(newController.evidence!.manualChecks.brightness, '100');
+      expect(newController.evidence!.manualChecks.sealedFixture, Mc.sealedYes);
+      expect(newController.evidence!.manualChecks.dimmer, Mc.dimmerYes);
+    });
   });
 
   group('abandonSession()', () {
@@ -282,6 +314,27 @@ void main() {
       expect(controller.lastOutput, isNull);
       expect(controller.lastResult, isNull);
       expect(controller.lastClassification, isNull);
+    });
+
+    test('未ロードのin-progressセッションでも読み込んでから破棄できる', () async {
+      // 1つ目のコントローラでセッションを作成
+      await controller.startSession('bulb');
+      await controller.processClassification(_result(ImageLabel.bulbFullView));
+
+      // 2つ目のコントローラ（未ロード状態）で破棄
+      final newController = SessionController();
+      final session = await newController.storage.findLatestInProgress();
+      expect(session, isNotNull);
+
+      final evidence = await newController.storage.loadEvidence(session!.id);
+      expect(evidence, isNotNull);
+
+      await newController.loadSession(session, evidence!);
+      await newController.abandonSession();
+
+      // 破棄されたことを確認
+      final afterAbandon = await newController.storage.findLatestInProgress();
+      expect(afterAbandon, isNull);
     });
   });
 
