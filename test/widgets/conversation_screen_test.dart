@@ -13,7 +13,6 @@ import 'package:kore_no_kae_dore/core/session/session_controller.dart';
 import 'package:kore_no_kae_dore/core/storage/session_storage.dart';
 import 'package:kore_no_kae_dore/features/conversation/conversation_orchestrator.dart';
 import 'package:kore_no_kae_dore/features/conversation/conversation_screen.dart';
-import 'package:kore_no_kae_dore/features/conversation/models/conversation_turn.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 class FakePathProvider extends PathProviderPlatform {
@@ -60,10 +59,7 @@ void main() {
       await tester.pumpWidget(buildTestApp(orch));
       await tester.pump();
 
-      expect(
-        find.textContaining('商品が完全に同じであることは保証しません'),
-        findsAtLeast(1),
-      );
+      expect(find.textContaining('商品が完全に同じであることは保証しません'), findsAtLeast(1));
     });
 
     testWidgets('shows introduction card after start', (tester) async {

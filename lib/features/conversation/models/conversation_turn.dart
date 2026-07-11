@@ -3,11 +3,7 @@
 // コンシェルジュの確認プロンプトとユーザーの応答を保持
 // 関連: fixed_prompt_provider.dart, conversation_orchestrator.dart
 
-enum ConversationRole {
-  user,
-  agent,
-  system,
-}
+enum ConversationRole { user, agent, system }
 
 enum ConversationTurnType {
   text,
@@ -31,12 +27,14 @@ class PromptAction {
   final PromptActionType type;
   final String label;
   final String? value;
+  final String? fieldKey;
 
   const PromptAction({
     required this.id,
     required this.type,
     required this.label,
     this.value,
+    this.fieldKey,
   });
 }
 

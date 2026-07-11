@@ -6,6 +6,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kore_no_kae_dore/core/ml/classifier.dart';
 import 'package:kore_no_kae_dore/core/models/classification_result.dart';
 import 'package:kore_no_kae_dore/core/models/evidence_state.dart';
 import 'package:kore_no_kae_dore/core/session/session_controller.dart';
@@ -56,6 +57,28 @@ void main() {
       expect(orch.step, ConversationStep.introduction);
     });
 
+    test('start() resets intent, processing state', () async {
+      orch.start();
+      orch.begin();
+      await orch.selectIntent('check_spec');
+      await orch.skipToManual();
+      final action = PromptAction(
+        id: 'test',
+        type: PromptActionType.selectChoice,
+        label: 'E26',
+        value: Mc.userSelectedE26,
+        fieldKey: 'baseSize',
+      );
+      await orch.answerManualCheck(action);
+
+      orch.start();
+
+      expect(orch.intent, isNull);
+      expect(orch.isProcessing, false);
+      expect(orch.step, ConversationStep.introduction);
+      expect(orch.turns.length, 1);
+    });
+
     test('begin() transitions to intentSelection', () {
       orch.start();
 
@@ -68,33 +91,45 @@ void main() {
       expect(orch.step, ConversationStep.intentSelection);
     });
 
-    test('selectIntent("find_same") starts session and shows photo request', () async {
-      orch.start();
-      orch.begin();
+    test(
+      'selectIntent("find_same") starts session and shows photo request',
+      () async {
+        orch.start();
+        orch.begin();
 
-      await orch.selectIntent('find_same');
+        await orch.selectIntent('find_same');
 
-      expect(orch.intent, 'find_same');
-      expect(controller.session, isNotNull);
-      expect(controller.session!.category, 'bulb');
-      expect(orch.step, ConversationStep.waitingForPhoto);
-      expect(orch.turns.last.role, ConversationRole.agent);
-      final photoActions = orch.turns.last.actions;
-      expect(photoActions.any((a) => a.type == PromptActionType.takePhoto), true);
-      expect(photoActions.any((a) => a.type == PromptActionType.pickImage), true);
-      expect(photoActions.any((a) => a.type == PromptActionType.skip), true);
-    });
+        expect(orch.intent, 'find_same');
+        expect(controller.session, isNotNull);
+        expect(controller.session!.category, 'bulb');
+        expect(orch.step, ConversationStep.waitingForPhoto);
+        expect(orch.turns.last.role, ConversationRole.agent);
+        final photoActions = orch.turns.last.actions;
+        expect(
+          photoActions.any((a) => a.type == PromptActionType.takePhoto),
+          true,
+        );
+        expect(
+          photoActions.any((a) => a.type == PromptActionType.pickImage),
+          true,
+        );
+        expect(photoActions.any((a) => a.type == PromptActionType.skip), true);
+      },
+    );
 
-    test('selectIntent("check_spec") starts session with manualFallback', () async {
-      orch.start();
-      orch.begin();
+    test(
+      'selectIntent("check_spec") starts session with manualFallback',
+      () async {
+        orch.start();
+        orch.begin();
 
-      await orch.selectIntent('check_spec');
+        await orch.selectIntent('check_spec');
 
-      expect(orch.intent, 'check_spec');
-      expect(controller.evidence, isNotNull);
-      expect(controller.evidence!.manualFallback, true);
-    });
+        expect(orch.intent, 'check_spec');
+        expect(controller.evidence, isNotNull);
+        expect(controller.evidence!.manualFallback, true);
+      },
+    );
 
     test('skipToManual() falls back to manual checks', () async {
       orch.start();
@@ -106,34 +141,113 @@ void main() {
       expect(orch.step, ConversationStep.waitingForManualCheck);
       expect(orch.turns.last.role, ConversationRole.agent);
       expect(orch.turns.last.purpose, '口金サイズの確認');
-      expect(
-        orch.turns.last.actions.any((a) => a.label == 'E26'),
-        true,
-      );
-      expect(
-        orch.turns.last.actions.any((a) => a.label == '分からない'),
-        true,
-      );
+      expect(orch.turns.last.actions.any((a) => a.label == 'E26'), true);
+      expect(orch.turns.last.actions.any((a) => a.label == '分からない'), true);
     });
 
-    test('answerManualCheck("baseSize", "E26") updates field and shows next check',
-        () async {
+    test(
+      'answerManualCheck("baseSize", "E26") updates field and shows next check',
+      () async {
+        orch.start();
+        orch.begin();
+        await orch.selectIntent('check_spec');
+        await orch.skipToManual();
+
+        final action = PromptAction(
+          id: 'test',
+          type: PromptActionType.selectChoice,
+          label: 'E26',
+          value: Mc.userSelectedE26,
+          fieldKey: 'baseSize',
+        );
+        await orch.answerManualCheck(action);
+
+        expect(controller.evidence!.manualChecks.baseSize, Mc.userSelectedE26);
+        expect(controller.evidence!.manualChecks.colorTone, Mc.unknown);
+        expect(orch.turns.last.purpose, '光の色の確認');
+      },
+    );
+
+    test('分からない skips field and moves to next question', () async {
       orch.start();
       orch.begin();
       await orch.selectIntent('check_spec');
-      // スキップして手動確認へ
       await orch.skipToManual();
 
-      // 最初の手動確認（baseSize）に回答
-      await orch.answerManualCheck('baseSize', 'E26');
-
-      expect(controller.evidence!.manualChecks.baseSize, 'user_selected_e26');
-      expect(
-        controller.evidence!.manualChecks.colorTone,
-        'unknown',
+      final action = PromptAction(
+        id: 'test',
+        type: PromptActionType.selectChoice,
+        label: '分からない',
+        value: Mc.userSkipped,
+        fieldKey: 'baseSize',
       );
-      // 次の手動確認（colorTone）が表示されている
+      await orch.answerManualCheck(action);
+
+      expect(controller.evidence!.manualChecks.baseSize, Mc.userSkipped);
       expect(orch.turns.last.purpose, '光の色の確認');
     });
+
+    test('all manual checks completed shows readyForResult', () async {
+      orch.start();
+      orch.begin();
+      await orch.selectIntent('check_spec');
+      await orch.skipToManual();
+
+      final fields = [
+        'baseSize',
+        'colorTone',
+        'brightness',
+        'sealedFixture',
+        'dimmer',
+      ];
+      final values = [
+        Mc.userSelectedE26,
+        Mc.bulbColor,
+        '60',
+        Mc.sealedNo,
+        Mc.dimmerNo,
+      ];
+      final labels = ['E26', '電球色', '60', 'いいえ', 'いいえ'];
+
+      for (var i = 0; i < fields.length; i++) {
+        final action = PromptAction(
+          id: 'test$i',
+          type: PromptActionType.selectChoice,
+          label: labels[i],
+          value: values[i],
+          fieldKey: fields[i],
+        );
+        await orch.answerManualCheck(action);
+      }
+
+      expect(orch.step, ConversationStep.readyForResult);
+      expect(orch.turns.last.purpose, '完了');
+      expect(controller.evidence!.manualChecks.isComplete, true);
+    });
+
+    test('error turns show as system messages, not user messages', () async {
+      orch.start();
+      orch.begin();
+      await orch.selectIntent('find_same');
+
+      await orch.processPhoto('/nonexistent.jpg', _FailingClassifier());
+
+      final systemTurns = orch.turns.where(
+        (t) => t.role == ConversationRole.system,
+      );
+      expect(systemTurns.any((t) => t.message.contains('エラー')), true);
+
+      final userTurns = orch.turns.where(
+        (t) => t.role == ConversationRole.user,
+      );
+      expect(userTurns.any((t) => t.message.contains('エラー')), false);
+    });
   });
+}
+
+class _FailingClassifier extends Classifier {
+  @override
+  Future<ClassificationResult> classify(String imagePath) async {
+    throw Exception('mock error');
+  }
 }

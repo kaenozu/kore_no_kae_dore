@@ -15,10 +15,10 @@ class StubSessionController extends SessionController {
     RuleEngineOutput? lastOutput,
     PurchaseResult? lastResult,
     this.onUpdateManualCheck,
-  })  : _session = session,
-        _evidence = evidence,
-        _lastOutput = lastOutput,
-        _lastResult = lastResult;
+  }) : _session = session,
+       _evidence = evidence,
+       _lastOutput = lastOutput,
+       _lastResult = lastResult;
 
   CaptureSession? _session;
   EvidenceState? _evidence;
@@ -30,7 +30,8 @@ class StubSessionController extends SessionController {
     String? brightness,
     String? sealedFixture,
     String? dimmer,
-  })? onUpdateManualCheck;
+  })?
+  onUpdateManualCheck;
 
   @override
   CaptureSession? get session => _session;

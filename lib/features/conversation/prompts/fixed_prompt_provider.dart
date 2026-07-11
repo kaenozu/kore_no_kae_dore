@@ -4,6 +4,7 @@
 // 関連: conversation_orchestrator.dart, evidence_state.dart, rule_engine.dart
 
 import 'package:kore_no_kae_dore/core/models/evidence_state.dart';
+import 'package:kore_no_kae_dore/core/models/rule_engine_output.dart';
 
 import '../models/conversation_turn.dart';
 
@@ -103,7 +104,38 @@ class FixedPromptProvider {
     );
   }
 
-  ConversationTurn manualCheck(String field, List<String> options) {
+  ConversationTurn photoRequestForInstruction(RuleEngineOutput output) {
+    final actions = <PromptAction>[
+      PromptAction(
+        id: _nextId(),
+        type: PromptActionType.takePhoto,
+        label: '写真を撮る',
+      ),
+      PromptAction(
+        id: _nextId(),
+        type: PromptActionType.pickImage,
+        label: '画像を選ぶ',
+      ),
+      PromptAction(
+        id: _nextId(),
+        type: PromptActionType.skip,
+        label: '写真を使わず条件確認へ',
+      ),
+    ];
+    return ConversationTurn(
+      id: _nextId(),
+      role: ConversationRole.agent,
+      type: ConversationTurnType.photoRequest,
+      message: output.message,
+      purpose: output.title,
+      reason: output.warnings.isNotEmpty ? output.warnings.join('\n') : null,
+      createdAt: DateTime.now(),
+      actions: actions,
+    );
+  }
+
+  ConversationTurn manualCheck(String field) {
+    final options = _optionsFor(field);
     final (purpose, message, reason) = _manualCheckInfo(field);
     return ConversationTurn(
       id: _nextId(),
@@ -119,14 +151,16 @@ class FixedPromptProvider {
             id: _nextId(),
             type: PromptActionType.selectChoice,
             label: opt,
-            value: opt,
+            value: _displayToInternalValue(field, opt),
+            fieldKey: field,
           ),
         ),
         PromptAction(
           id: _nextId(),
           type: PromptActionType.selectChoice,
           label: '分からない',
-          value: 'unknown',
+          value: Mc.userSkipped,
+          fieldKey: field,
         ),
       ],
     );
@@ -171,38 +205,68 @@ class FixedPromptProvider {
     );
   }
 
+  ConversationTurn systemError(String message) {
+    return ConversationTurn(
+      id: _nextId(),
+      role: ConversationRole.system,
+      type: ConversationTurnType.text,
+      message: message,
+      createdAt: DateTime.now(),
+    );
+  }
+
   (String, String, String) _manualCheckInfo(String field) {
     return switch (field) {
       'baseSize' => (
         '口金サイズの確認',
         '電球の口金（金属部分）のサイズを教えてください。',
-        'E26（一般的なサイズ）とE17（小型）では商品が異なります。'
+        'E26（一般的なサイズ）とE17（小型）では商品が異なります。',
       ),
-      'colorTone' => (
-        '光の色の確認',
-        '普段使っていた光の色を選んでください。',
-        '色が違うと部屋の印象が変わります。'
-      ),
+      'colorTone' => ('光の色の確認', '普段使っていた光の色を選んでください。', '色が違うと部屋の印象が変わります。'),
       'brightness' => (
         '明るさの確認',
         '希望する明るさを選んでください。',
-        '明るさはワット数相当（40形/60形/100形）で選びます。'
+        '明るさはワット数相当（40形/60形/100形）で選びます。',
       ),
       'sealedFixture' => (
         '照明器具の確認',
         'この電球を使う器具は密閉型ですか？',
-        '密閉器具に対応していない電球を使うと故障の原因になります。'
+        '密閉器具に対応していない電球を使うと故障の原因になります。',
       ),
       'dimmer' => (
         '調光器の確認',
         'この電球には調光スイッチが付いていますか？',
-        '調光器対応の電球が必要かどうかを確認するためです。'
+        '調光器対応の電球が必要かどうかを確認するためです。',
       ),
-      _ => (
-        '確認',
-        '以下の項目を教えてください。',
-        ''
-      ),
+      _ => ('確認', '以下の項目を教えてください。', ''),
+    };
+  }
+
+  String _displayToInternalValue(String field, String display) {
+    return switch (field) {
+      'baseSize' => switch (display) {
+        'E26' => Mc.userSelectedE26,
+        'E17' => Mc.userSelectedE17,
+        _ => Mc.unknown,
+      },
+      'colorTone' => switch (display) {
+        '電球色' => Mc.bulbColor,
+        '昼白色' => Mc.neutralWhite,
+        '昼光色' => Mc.daylight,
+        _ => Mc.unknown,
+      },
+      'brightness' => display,
+      'sealedFixture' => switch (display) {
+        'はい' => Mc.sealedYes,
+        'いいえ' => Mc.sealedNo,
+        _ => Mc.unknown,
+      },
+      'dimmer' => switch (display) {
+        'はい' => Mc.dimmerYes,
+        'いいえ' => Mc.dimmerNo,
+        _ => Mc.unknown,
+      },
+      _ => Mc.unknown,
     };
   }
 
@@ -234,35 +298,37 @@ class FixedPromptProvider {
   }
 
   String _fieldLabel(String field, String value) {
-    if (value == 'unknown') return '未確認';
+    if (value == Mc.unknown) return '未確認';
+    if (value == Mc.userSkipped) return 'スキップ';
     return switch (field) {
       'baseSize' => switch (value) {
-        'e26_candidate' || 'user_selected_e26' => 'E26候補',
-        'e17_candidate' || 'user_selected_e17' => 'E17候補',
+        Mc.e26Candidate => 'E26候補',
+        Mc.userSelectedE26 => 'E26候補',
+        Mc.e17Candidate => 'E17候補',
+        Mc.userSelectedE17 => 'E17候補',
         _ => value,
       },
       'colorTone' => switch (value) {
-        'bulb_color' => '電球色',
-        'neutral_white' => '昼白色',
-        'daylight' => '昼光色',
+        Mc.bulbColor => '電球色',
+        Mc.neutralWhite => '昼白色',
+        Mc.daylight => '昼光色',
         _ => value,
       },
       'brightness' => '$value形相当',
       'sealedFixture' => switch (value) {
-        'yes' => '密閉対応必要',
-        'no' => '密閉不要',
+        Mc.sealedYes => '密閉対応必要',
+        Mc.sealedNo => '密閉不要',
         _ => value,
       },
       'dimmer' => switch (value) {
-        'yes' => '調光対応必要',
-        'no' => '調光不要',
+        Mc.dimmerYes => '調光対応必要',
+        Mc.dimmerNo => '調光不要',
         _ => value,
       },
       _ => value,
     };
   }
 
-  /// 手動確認が必要なフィールドを順に返す
   static List<String> get manualCheckOrder => [
     'baseSize',
     'colorTone',
@@ -271,8 +337,7 @@ class FixedPromptProvider {
     'dimmer',
   ];
 
-  /// 指定フィールドの選択肢を返す
-  static List<String> optionsFor(String field) {
+  static List<String> _optionsFor(String field) {
     return switch (field) {
       'baseSize' => ['E26', 'E17'],
       'colorTone' => ['電球色', '昼白色', '昼光色'],

@@ -5,6 +5,7 @@
 
 class Mc {
   static const unknown = 'unknown';
+  static const userSkipped = 'skipped';
   static const e26Candidate = 'e26_candidate';
   static const e17Candidate = 'e17_candidate';
   static const userSelectedE26 = 'user_selected_e26';

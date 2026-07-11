@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/ml/classifier.dart';
+import '../../core/models/evidence_state.dart';
 import 'conversation_orchestrator.dart';
 import 'models/conversation_turn.dart';
 import 'prompts/fixed_prompt_provider.dart';
@@ -15,12 +16,14 @@ class ConversationScreen extends StatefulWidget {
   final ConversationOrchestrator orchestrator;
   final ValueNotifier<Classifier> classifierNotifier;
   final ValueNotifier<String?> debugLabelNotifier;
+  final ImagePicker Function()? pickerFactory;
 
   const ConversationScreen({
     super.key,
     required this.orchestrator,
     required this.classifierNotifier,
     required this.debugLabelNotifier,
+    this.pickerFactory,
   });
 
   @override
@@ -28,7 +31,7 @@ class ConversationScreen extends StatefulWidget {
 }
 
 class _ConversationScreenState extends State<ConversationScreen> {
-  final _picker = ImagePicker();
+  late final ImagePicker _picker;
   final _scrollController = ScrollController();
   bool _showConditions = false;
 
@@ -37,6 +40,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
   @override
   void initState() {
     super.initState();
+    _picker = widget.pickerFactory != null
+        ? widget.pickerFactory!()
+        : ImagePicker();
     _orch.addListener(_onOrchChanged);
     _orch.start();
   }
@@ -75,7 +81,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       widget.classifierNotifier.value,
       debugLabel: widget.debugLabelNotifier.value,
     );
-    _navigateIfReady();
   }
 
   Future<void> _onPickImage() async {
@@ -90,24 +95,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       widget.classifierNotifier.value,
       debugLabel: widget.debugLabelNotifier.value,
     );
-    _navigateIfReady();
-  }
-
-  void _navigateIfReady() {
-    if (mounted && _orch.step == ConversationStep.readyForResult) {
-      _navigateToResult();
-    }
-  }
-
-  void _navigateToResult() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/result',
-        (route) => route.settings.name == '/home',
-      );
-    });
   }
 
   @override
@@ -123,9 +110,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              _showConditions ? Icons.expand_less : Icons.expand_more,
-            ),
+            icon: Icon(_showConditions ? Icons.expand_less : Icons.expand_more),
             tooltip: '現在分かっている条件',
             onPressed: () => setState(() => _showConditions = !_showConditions),
           ),
@@ -187,7 +172,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
           _conditionRow('口金サイズ', _labelFor('baseSize', checks?.baseSize)),
           _conditionRow('光の色', _labelFor('colorTone', checks?.colorTone)),
           _conditionRow('明るさ', _labelFor('brightness', checks?.brightness)),
-          _conditionRow('密閉器具', _labelFor('sealedFixture', checks?.sealedFixture)),
+          _conditionRow(
+            '密閉器具',
+            _labelFor('sealedFixture', checks?.sealedFixture),
+          ),
           _conditionRow('調光器', _labelFor('dimmer', checks?.dimmer)),
         ],
       ),
@@ -195,28 +183,31 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   String _labelFor(String field, String? value) {
-    if (value == null || value == 'unknown') return '未確認';
+    if (value == null || value == Mc.unknown) return '未確認';
+    if (value == Mc.userSkipped) return 'スキップ';
     return switch (field) {
       'baseSize' => switch (value) {
-        'e26_candidate' || 'user_selected_e26' => 'E26候補',
-        'e17_candidate' || 'user_selected_e17' => 'E17候補',
+        Mc.e26Candidate => 'E26候補',
+        Mc.userSelectedE26 => 'E26候補',
+        Mc.e17Candidate => 'E17候補',
+        Mc.userSelectedE17 => 'E17候補',
         _ => value,
       },
       'colorTone' => switch (value) {
-        'bulb_color' => '電球色',
-        'neutral_white' => '昼白色',
-        'daylight' => '昼光色',
+        Mc.bulbColor => '電球色',
+        Mc.neutralWhite => '昼白色',
+        Mc.daylight => '昼光色',
         _ => value,
       },
       'brightness' => '$value形相当',
       'sealedFixture' => switch (value) {
-        'yes' => '密閉対応必要',
-        'no' => '密閉不要',
+        Mc.sealedYes => '密閉対応必要',
+        Mc.sealedNo => '密閉不要',
         _ => value,
       },
       'dimmer' => switch (value) {
-        'yes' => '調光対応必要',
-        'no' => '調光不要',
+        Mc.dimmerYes => '調光対応必要',
+        Mc.dimmerNo => '調光不要',
         _ => value,
       },
       _ => value,
@@ -244,8 +235,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
       itemCount: turns.length,
       itemBuilder: (context, index) {
         final turn = turns[index];
-        final isLastAgent = index == turns.length - 1 &&
-            turn.role == ConversationRole.agent;
+        final isLastAgent =
+            index == turns.length - 1 && turn.role == ConversationRole.agent;
         return _buildTurnCard(turn, showActions: isLastAgent);
       },
     );
@@ -275,7 +266,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
             children: [
               if (turn.purpose != null) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.teal[50],
                     borderRadius: BorderRadius.circular(6),
@@ -428,11 +422,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
           spacing: 8,
           runSpacing: 6,
           children: choiceActions
-              .map((a) => ActionChip(
-                    label: Text(a.label, style: const TextStyle(fontSize: 13)),
-                    onPressed: () => _onActionTap(a),
-                    backgroundColor: Colors.teal[50],
-                  ))
+              .map(
+                (a) => ActionChip(
+                  label: Text(a.label, style: const TextStyle(fontSize: 13)),
+                  onPressed: () => _onActionTap(a),
+                  backgroundColor: Colors.teal[50],
+                ),
+              )
               .toList(),
         ),
       );
@@ -441,16 +437,18 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (otherActions.isNotEmpty) {
       widgets.add(const SizedBox(height: 8));
       widgets.addAll(
-        otherActions.map((a) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => _onActionTap(a),
-                  child: Text(a.label, style: const TextStyle(fontSize: 13)),
-                ),
+        otherActions.map(
+          (a) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => _onActionTap(a),
+                child: Text(a.label, style: const TextStyle(fontSize: 13)),
               ),
-            )),
+            ),
+          ),
+        ),
       );
     }
 
@@ -469,7 +467,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
         await _onSelectChoice(action);
       case PromptActionType.skip:
         await _orch.skipToManual();
-        _navigateIfReady();
       case PromptActionType.continueAction:
         if (action.value == 'show_result') {
           _navigateToResult();
@@ -483,23 +480,20 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (action.value == null) return;
 
     if (_orch.step == ConversationStep.waitingForManualCheck) {
-      final lastAgentTurn = _orch.turns.reversed.firstWhere(
-        (t) => t.role == ConversationRole.agent,
-      );
-      final field = _guessFieldFromPurpose(lastAgentTurn.purpose ?? '');
-      await _orch.answerManualCheck(field, action.label);
-      _navigateIfReady();
+      await _orch.answerManualCheck(action);
     } else {
       await _orch.selectIntent(action.value!);
     }
   }
 
-  String _guessFieldFromPurpose(String purpose) {
-    if (purpose.contains('口金')) return 'baseSize';
-    if (purpose.contains('光')) return 'colorTone';
-    if (purpose.contains('明る')) return 'brightness';
-    if (purpose.contains('照明') || purpose.contains('密閉')) return 'sealedFixture';
-    if (purpose.contains('調光')) return 'dimmer';
-    return 'baseSize';
+  void _navigateToResult() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/result',
+        (route) => route.settings.name == '/home',
+      );
+    });
   }
 }

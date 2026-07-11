@@ -17,6 +17,7 @@ import 'prompts/fixed_prompt_provider.dart';
 class ConversationOrchestrator extends ChangeNotifier {
   final SessionController controller;
   final FixedPromptProvider _provider = FixedPromptProvider();
+  final Set<String> _skippedFields = {};
 
   ConversationOrchestrator({required this.controller});
   final List<ConversationTurn> _turns = [];
@@ -32,15 +33,16 @@ class ConversationOrchestrator extends ChangeNotifier {
   bool get isProcessing => _isProcessing;
   String? get intent => _intent;
 
-  /// 会話を開始する
   void start() {
     _turns.clear();
     _step = ConversationStep.introduction;
+    _intent = null;
+    _isProcessing = false;
+    _skippedFields.clear();
     _turns.add(_provider.introduction());
     notifyListeners();
   }
 
-  /// ユーザーが始めるを押した
   void begin() {
     _turns.add(_provider.userMessage('始める'));
     _step = ConversationStep.intentSelection;
@@ -48,15 +50,13 @@ class ConversationOrchestrator extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// ユーザーが目的を選択した
   Future<void> selectIntent(String intentValue) async {
     if (_isProcessing) return;
     _isProcessing = true;
     notifyListeners();
 
     _intent = intentValue;
-    final label =
-        intentValue == 'find_same' ? '同じ電球を探したい' : '条件だけ確認したい';
+    final label = intentValue == 'find_same' ? '同じ電球を探したい' : '条件だけ確認したい';
     _turns.add(_provider.userMessage(label));
 
     await controller.startSession('bulb');
@@ -66,16 +66,17 @@ class ConversationOrchestrator extends ChangeNotifier {
     }
 
     _step = ConversationStep.waitingForPhoto;
-    _turns.add(_provider.photoRequest(
-      purpose: '電球全体の形状確認',
-      message: '電球全体が入るように撮影してください。口金や印字が見えなくても構いません。',
-      reason: '口金サイズ（E26/E17）の見分けと、製品種別を判断するためです。',
-    ));
+    _turns.add(
+      _provider.photoRequest(
+        purpose: '電球全体の形状確認',
+        message: '電球全体が入るように撮影してください。口金や印字が見えなくても構いません。',
+        reason: '口金サイズ（E26/E17）の見分けと、製品種別を判断するためです。',
+      ),
+    );
     _isProcessing = false;
     notifyListeners();
   }
 
-  /// 写真の分類結果を処理する
   Future<void> processPhoto(
     String imagePath,
     Classifier classifier, {
@@ -90,30 +91,29 @@ class ConversationOrchestrator extends ChangeNotifier {
       final runner = ClassificationRunner(classifier);
       final result = await runner.run(imagePath, debugLabel: debugLabel);
 
-      if (result.topLabel.isPoorQuality ||
-          result.topLabel == ImageLabel.unknownOther) {
-        _turns.add(_provider.userMessage('（写真の確認に失敗しました）'));
+      await controller.processClassification(result);
+
+      final isError =
+          result.topLabel.isPoorQuality ||
+          result.topLabel == ImageLabel.unknownOther;
+      if (isError) {
+        _turns.add(_provider.systemError('写真の確認に失敗しました'));
         _turns.add(_retryOrSkipPrompt());
         _isProcessing = false;
         notifyListeners();
         return;
       }
 
-      await controller.processClassification(result);
-      await controller.setManualFallback();
-      await controller.updateManualCheck();
-
       await _advanceAfterPhoto();
     } catch (e) {
       debugPrint('Conversation photo error: $e');
-      _turns.add(_provider.userMessage('（エラーが発生しました）'));
+      _turns.add(_provider.systemError('エラーが発生しました'));
       _turns.add(_retryOrSkipPrompt());
     }
     _isProcessing = false;
     notifyListeners();
   }
 
-  /// 写真を使わず手動確認へスキップ
   Future<void> skipToManual() async {
     if (_isProcessing) return;
     _isProcessing = true;
@@ -135,14 +135,20 @@ class ConversationOrchestrator extends ChangeNotifier {
   }
 
   Future<void> _advanceAfterPhoto() async {
-    if (controller.lastOutput?.type == OutputType.purchaseResult) {
-      _step = ConversationStep.readyForResult;
-      _turns.add(_provider.readyForResult());
-      return;
-    }
+    final output = controller.lastOutput;
+    if (output == null) return;
 
-    _step = ConversationStep.waitingForManualCheck;
-    await _askNextManualCheck();
+    switch (output.type) {
+      case OutputType.nextInstruction:
+        _step = ConversationStep.waitingForPhoto;
+        _turns.add(_provider.photoRequestForInstruction(output));
+      case OutputType.manualCheck:
+        _step = ConversationStep.waitingForManualCheck;
+        await _askNextManualCheck();
+      case OutputType.purchaseResult:
+        _step = ConversationStep.readyForResult;
+        _turns.add(_provider.readyForResult());
+    }
   }
 
   ConversationTurn _retryOrSkipPrompt() {
@@ -173,48 +179,39 @@ class ConversationOrchestrator extends ChangeNotifier {
     if (evidence == null) return;
 
     final unknownField = FixedPromptProvider.manualCheckOrder.firstWhere(
-      (f) => _getFieldValue(evidence, f) == 'unknown',
+      (f) =>
+          _getFieldValue(evidence, f) == Mc.unknown &&
+          !_skippedFields.contains(f),
       orElse: () => '',
     );
 
     if (unknownField.isEmpty) {
-      if (controller.lastOutput?.type == OutputType.purchaseResult) {
-        _step = ConversationStep.readyForResult;
-        _turns.add(_provider.readyForResult());
-      }
+      _step = ConversationStep.readyForResult;
+      _turns.add(_provider.readyForResult());
       return;
     }
 
-    final options = FixedPromptProvider.optionsFor(unknownField);
-    _turns.add(_provider.manualCheck(unknownField, options));
+    _turns.add(_provider.manualCheck(unknownField));
   }
 
-  /// 手動確認の回答を受け取る
-  Future<void> answerManualCheck(String field, String displayValue) async {
+  Future<void> answerManualCheck(PromptAction action) async {
     if (_isProcessing) return;
     _isProcessing = true;
     notifyListeners();
 
-    final mcValue = _toMcValue(field, displayValue);
-    _turns.add(_provider.userMessage(displayValue));
+    final field = action.fieldKey!;
+    final value = action.value!;
 
-    switch (field) {
-      case 'baseSize':
-        await controller.updateManualCheck(baseSize: mcValue);
-      case 'colorTone':
-        await controller.updateManualCheck(colorTone: mcValue);
-      case 'brightness':
-        await controller.updateManualCheck(brightness: mcValue);
-      case 'sealedFixture':
-        await controller.updateManualCheck(sealedFixture: mcValue);
-      case 'dimmer':
-        await controller.updateManualCheck(dimmer: mcValue);
+    _turns.add(_provider.userMessage(action.label));
+
+    await _updateField(field, value);
+
+    if (value == Mc.userSkipped) {
+      _skippedFields.add(field);
     }
 
-    final evidence = controller.evidence;
-    if (evidence != null &&
-        evidence.manualChecks.isComplete &&
-        controller.lastOutput?.type == OutputType.purchaseResult) {
+    final output = controller.lastOutput;
+    if (output?.type == OutputType.purchaseResult) {
       _step = ConversationStep.readyForResult;
       _turns.add(_provider.readyForResult());
     } else {
@@ -225,7 +222,21 @@ class ConversationOrchestrator extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 結果画面へ進む
+  Future<void> _updateField(String field, String value) async {
+    switch (field) {
+      case 'baseSize':
+        await controller.updateManualCheck(baseSize: value);
+      case 'colorTone':
+        await controller.updateManualCheck(colorTone: value);
+      case 'brightness':
+        await controller.updateManualCheck(brightness: value);
+      case 'sealedFixture':
+        await controller.updateManualCheck(sealedFixture: value);
+      case 'dimmer':
+        await controller.updateManualCheck(dimmer: value);
+    }
+  }
+
   void goToResult() {
     if (_step != ConversationStep.readyForResult) return;
     _step = ConversationStep.completed;
@@ -239,37 +250,7 @@ class ConversationOrchestrator extends ChangeNotifier {
       'brightness' => evidence.manualChecks.brightness,
       'sealedFixture' => evidence.manualChecks.sealedFixture,
       'dimmer' => evidence.manualChecks.dimmer,
-      _ => 'unknown',
+      _ => Mc.unknown,
     };
   }
-
-  String _toMcValue(String field, String displayValue) {
-    return switch (field) {
-      'baseSize' => switch (displayValue) {
-        'E26' => 'user_selected_e26',
-        'E17' => 'user_selected_e17',
-        _ => 'unknown',
-      },
-      'colorTone' => switch (displayValue) {
-        '電球色' => 'bulb_color',
-        '昼白色' => 'neutral_white',
-        '昼光色' => 'daylight',
-        _ => 'unknown',
-      },
-      'brightness' => displayValue,
-      'sealedFixture' => switch (displayValue) {
-        'はい' => 'yes',
-        'いいえ' => 'no',
-        _ => 'unknown',
-      },
-      'dimmer' => switch (displayValue) {
-        'はい' => 'yes',
-        'いいえ' => 'no',
-        _ => 'unknown',
-      },
-      _ => 'unknown',
-    };
-  }
-
-
 }
