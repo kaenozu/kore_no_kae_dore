@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 class HomeScreen extends StatefulWidget {
   final VoidCallback onStartBulb;
   final VoidCallback onHistory;
+  final VoidCallback? onStartConversation;
   final VoidCallback? onResume;
   final VoidCallback? onStartFresh;
 
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.onStartBulb,
     required this.onHistory,
+    this.onStartConversation,
     this.onResume,
     this.onStartFresh,
   });
@@ -118,6 +120,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SnackBar(content: Text('電池は準備中です')),
                 );
               },
+            ),
+            const SizedBox(height: 12),
+            _CategoryCard(
+              icon: Icons.auto_awesome,
+              title: 'AIに相談する',
+              subtitle: '会話形式で条件を確認',
+              isBeta: false,
+              onTap: () => widget.onStartConversation?.call(),
             ),
             const SizedBox(height: 12),
             _CategoryCard(

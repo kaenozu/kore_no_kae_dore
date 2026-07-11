@@ -11,6 +11,8 @@ import 'core/ml/gemini_classifier.dart';
 import 'core/ml/mock_classifier.dart';
 import 'core/session/session_controller.dart';
 import 'features/capture/capture_guide_screen.dart';
+import 'features/conversation/conversation_orchestrator.dart';
+import 'features/conversation/conversation_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/manual_check/manual_check_screen.dart';
@@ -136,6 +138,9 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                   onHistory: () {
                     Navigator.of(context).pushNamed('/history');
                   },
+                  onStartConversation: () {
+                    Navigator.of(context).pushNamed('/conversation');
+                  },
                   onResume: _hasResumeSession ? _onResume : null,
                 );
               case '/capture':
@@ -149,6 +154,14 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                 return ManualCheckScreen(controller: _controller);
               case '/result':
                 return PurchaseResultScreen(controller: _controller);
+              case '/conversation':
+                return ConversationScreen(
+                  orchestrator: ConversationOrchestrator(
+                    controller: _controller,
+                  ),
+                  classifierNotifier: _classifier,
+                  debugLabelNotifier: _debugLabelNotifier,
+                );
               case '/history':
                 return const HistoryScreen();
               default:
