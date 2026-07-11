@@ -6,6 +6,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'core/models/evidence_state.dart';
 import 'core/ml/classifier.dart';
 import 'core/ml/gemini_classifier.dart';
 import 'core/ml/mock_classifier.dart';
@@ -131,14 +132,13 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                     Navigator.of(context).pushNamed('/capture');
                   },
                   onStartFresh: () async {
-                    // 保存済みのin-progressセッションを読み込んでから破棄する
                     setState(() => _hasResumeSession = false);
                     final session = await _controller.storage.findLatestInProgress();
                     if (session != null) {
-                      final evidence = await _controller.storage.loadEvidence(session.id);
-                      if (evidence != null) {
-                        await _controller.loadSession(session, evidence);
-                      }
+                      final evidence =
+                          await _controller.storage.loadEvidence(session.id) ??
+                          EvidenceState(sessionId: session.id);
+                      await _controller.loadSession(session, evidence);
                     }
                     await _controller.abandonSession();
                   },

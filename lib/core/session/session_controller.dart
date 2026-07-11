@@ -145,10 +145,9 @@ class SessionController {
     if (sealedFixture != null) _evidence!.manualChecks.sealedFixture = sealedFixture;
     if (dimmer != null) _evidence!.manualChecks.dimmer = dimmer;
 
-    // 手動確認が完了したらfailedAttemptsをリセットしてpurchaseResultに進める
-    if (_evidence!.manualChecks.isComplete) {
-      _session!.failedAttempts = 0;
-    }
+    // RuleEngine.process() に現在の failedAttempts を渡す。
+    // failedAttempts >= 3 && manualChecks.isComplete の条件を成立させるため、
+    // リセットは process() の後（purchaseResult確定時のみ）に行う。
     _lastOutput = _ruleEngine.process(_evidence!, failedAttempts: _session?.failedAttempts ?? 0);
     _session!.updatedAt = DateTime.now();
     await storage.saveSession(_session!);
@@ -156,6 +155,9 @@ class SessionController {
 
     if (_lastOutput!.type == OutputType.purchaseResult) {
       await _finalizeResult();
+      // 購入結果確定後にのみリセットする
+      _session!.failedAttempts = 0;
+      await storage.saveSession(_session!);
     }
   }
 

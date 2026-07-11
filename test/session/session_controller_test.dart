@@ -266,6 +266,33 @@ void main() {
       expect(controller.lastResult, isNotNull);
     });
 
+    test('写真なし+failedAttempts=3+手動完了でcontroller経由purchaseResultに到達する', () async {
+      await controller.startSession('led_bulb');
+
+      // 写真フラグはすべてfalse（撮影失败のみ）
+      controller.session!.failedAttempts = 3;
+
+      await controller.updateManualCheck(
+        baseSize: Mc.e26Candidate,
+        colorTone: Mc.bulbColor,
+        brightness: '60',
+        sealedFixture: Mc.sealedNo,
+        dimmer: Mc.dimmerNo,
+      );
+
+      // RuleEngine が failedAttempts >= 3 && manualChecks.isComplete を成立させる
+      expect(controller.lastOutput!.type, OutputType.purchaseResult);
+      expect(controller.lastResult, isNotNull);
+      // セッションがcompletedになる
+      expect(controller.session!.status, 'completed');
+      // EvidenceとSessionが保存される
+      final savedSession = await controller.storage.loadSession(controller.session!.id);
+      final savedEvidence = await controller.storage.loadEvidence(controller.session!.id);
+      expect(savedSession, isNotNull);
+      expect(savedSession!.status, 'completed');
+      expect(savedEvidence, isNotNull);
+    });
+
     test('手動確認入力後にcontrollerを作り直すとEvidence値が復元される', () async {
       await controller.startSession('led_bulb');
       controller.evidence!.fullViewCaptured = true;
@@ -330,6 +357,42 @@ void main() {
       expect(evidence, isNotNull);
 
       await newController.loadSession(session, evidence!);
+      await newController.abandonSession();
+
+      // 破棄されたことを確認
+      final afterAbandon = await newController.storage.findLatestInProgress();
+      expect(afterAbandon, isNull);
+    });
+
+    test('Evidence欠損時でもセッションを破棄できる', () async {
+      // セッションを作成
+      await controller.startSession('bulb');
+      final sessionId = controller.session!.id;
+
+      // Evidenceファイルを削除（欠損をシミュレート）
+      await controller.storage.deleteSession(sessionId);
+      // セッションだけ再保存
+      final sessionOnly = CaptureSession(
+        id: sessionId,
+        category: 'bulb',
+        status: 'in_progress',
+        currentStep: StepName.fullView,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await controller.storage.saveSession(sessionOnly);
+
+      // 破棄処理を実行（Evidenceなしでも异常なく完了する）
+      final newController = SessionController();
+      final session = await newController.storage.findLatestInProgress();
+      expect(session, isNotNull);
+
+      // loadSession に EvidenceState のデフォルトを渡して破棄
+      final evidence = await newController.storage.loadEvidence(session!.id);
+      expect(evidence, isNull);
+
+      final fallbackEvidence = EvidenceState(sessionId: session.id);
+      await newController.loadSession(session, fallbackEvidence);
       await newController.abandonSession();
 
       // 破棄されたことを確認
