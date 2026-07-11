@@ -34,7 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // initState時点で既にonResumeがある場合（_checkResumeSessionが高速完了した場合）
     if (widget.onResume != null && !_resumeDialogShown) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _showResumeDialog());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showResumeDialog();
+      });
     }
   }
 
@@ -42,7 +44,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void didUpdateWidget(HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.onResume == null && widget.onResume != null && !_resumeDialogShown) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _showResumeDialog());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showResumeDialog();
+      });
     }
   }
 

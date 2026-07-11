@@ -131,8 +131,15 @@ class _HomeWithHistoryState extends State<_HomeWithHistory> {
                     Navigator.of(context).pushNamed('/capture');
                   },
                   onStartFresh: () async {
-                    // 既存進行中セッションをabandonedにする
+                    // 保存済みのin-progressセッションを読み込んでから破棄する
                     setState(() => _hasResumeSession = false);
+                    final session = await _controller.storage.findLatestInProgress();
+                    if (session != null) {
+                      final evidence = await _controller.storage.loadEvidence(session.id);
+                      if (evidence != null) {
+                        await _controller.loadSession(session, evidence);
+                      }
+                    }
                     await _controller.abandonSession();
                   },
                   onHistory: () {

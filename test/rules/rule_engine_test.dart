@@ -110,6 +110,21 @@ void main() {
       expect(output.type, OutputType.purchaseResult);
     });
 
+    test('3回失敗+手動確認完了で写真不足でもpurchaseResultを返す', () {
+      final evidence = EvidenceState(sessionId: sessionId);
+      // 写真は全く撮影していない（failedAttempts>=3の手動フォールバック）
+      evidence.manualChecks.baseSize = Mc.e26Candidate;
+      evidence.manualChecks.colorTone = Mc.bulbColor;
+      evidence.manualChecks.brightness = '60';
+      evidence.manualChecks.sealedFixture = Mc.sealedNo;
+      evidence.manualChecks.dimmer = Mc.dimmerNo;
+
+      final output = engine.process(evidence, failedAttempts: 3);
+
+      expect(output.type, OutputType.purchaseResult);
+      expect(output.warnings.any((w) => w.contains('手動入力')), true);
+    });
+
     test('manualFallback 有効 + manualChecks 完了で写真不足でも purchaseResult を返す', () {
       final evidence = EvidenceState(sessionId: sessionId);
       // 写真は全く撮影していない
