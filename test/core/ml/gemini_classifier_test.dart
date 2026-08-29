@@ -30,5 +30,10 @@ void main() {
       final c = GeminiClassifier();
       expect(c.isReady, false);
     });
+
+    test('クライアントからのGemini初期化を拒否する', () async {
+      final c = GeminiClassifier();
+      expect(c.init(), throwsA(isA<ClassifierInitException>()));
+    });
   });
 }
