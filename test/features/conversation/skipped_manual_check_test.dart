@@ -6,6 +6,7 @@ import 'package:kore_no_kae_dore/core/session/session_controller.dart';
 import 'package:kore_no_kae_dore/core/storage/session_storage.dart';
 import 'package:kore_no_kae_dore/features/conversation/conversation_orchestrator.dart';
 import 'package:kore_no_kae_dore/features/conversation/models/conversation_turn.dart';
+import 'package:kore_no_kae_dore/features/conversation/prompts/fixed_prompt_provider.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 class _FakePathProvider extends PathProviderPlatform {
