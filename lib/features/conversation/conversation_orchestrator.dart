@@ -185,13 +185,28 @@ class ConversationOrchestrator extends ChangeNotifier {
       orElse: () => '',
     );
 
-    if (unknownField.isEmpty) {
-      _step = ConversationStep.readyForResult;
-      _turns.add(_provider.readyForResult());
+    if (unknownField.isNotEmpty) {
+      _turns.add(_provider.manualCheck(unknownField));
       return;
     }
 
-    _turns.add(_provider.manualCheck(unknownField));
+    final unresolvedField = FixedPromptProvider.manualCheckOrder.firstWhere(
+      (f) => !Mc.isResolved(_getFieldValue(evidence, f)),
+      orElse: () => '',
+    );
+
+    if (unresolvedField.isNotEmpty) {
+      _step = ConversationStep.waitingForManualCheck;
+      _skippedFields.remove(unresolvedField);
+      _turns.add(
+        _provider.systemError('購入判断に必要な未確認項目が残っています。回答してから結果へ進んでください。'),
+      );
+      _turns.add(_provider.manualCheck(unresolvedField));
+      return;
+    }
+
+    _step = ConversationStep.readyForResult;
+    _turns.add(_provider.readyForResult());
   }
 
   Future<void> answerManualCheck(PromptAction action) async {
@@ -208,10 +223,13 @@ class ConversationOrchestrator extends ChangeNotifier {
 
     if (value == Mc.userSkipped) {
       _skippedFields.add(field);
+    } else {
+      _skippedFields.remove(field);
     }
 
     final output = controller.lastOutput;
-    if (output?.type == OutputType.purchaseResult) {
+    if (output?.type == OutputType.purchaseResult &&
+        controller.evidence?.manualChecks.isComplete == true) {
       _step = ConversationStep.readyForResult;
       _turns.add(_provider.readyForResult());
     } else {
