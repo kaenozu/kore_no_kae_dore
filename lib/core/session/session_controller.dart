@@ -39,7 +39,21 @@ class SessionController {
     _evidence = evidence;
     _lastOutput = _ruleEngine.process(evidence, failedAttempts: session.failedAttempts);
     if (_lastOutput!.type == OutputType.purchaseResult) {
-      _lastResult = await _resultStorage.loadResult(session.resultId ?? '');
+      if (session.resultId != null) {
+        _lastResult = await _resultStorage.loadResult(session.resultId!);
+      }
+      _lastResult ??= await _resultStorage.loadResultForSession(session.id);
+
+      // A result may have been durably written just before the session commit
+      // failed. Repair that recoverable orphan instead of hiding the result.
+      if (_lastResult != null &&
+          (session.resultId != _lastResult!.id || session.status != 'completed')) {
+        session.status = 'completed';
+        session.currentStep = StepName.result;
+        session.resultId = _lastResult!.id;
+        session.updatedAt = DateTime.now();
+        await storage.saveSession(session);
+      }
     }
   }
 
@@ -224,13 +238,15 @@ class SessionController {
       matchLevel: level,
     );
 
+    // Commit the result first. If the following session write fails, startup
+    // recovery can reconnect this durable result to the in-progress session.
+    await _resultStorage.saveResult(_lastResult!);
+
     _session!.status = 'completed';
     _session!.currentStep = StepName.result;
     _session!.resultId = _lastResult!.id;
     _session!.updatedAt = now;
-
     await storage.saveSession(_session!);
-    await _resultStorage.saveResult(_lastResult!);
   }
 
   /// セッションを破棄する
