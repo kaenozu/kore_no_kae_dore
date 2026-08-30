@@ -24,7 +24,23 @@ class PurchaseResultStorage {
   Future<void> saveResult(PurchaseResult result) async {
     final path = await _localPath;
     final file = File('$path/${result.id}.json');
-    await file.writeAsString(jsonEncode(result.toJson()));
+    final encoded = jsonEncode(result.toJson());
+
+    if (await file.exists()) {
+      final existing = await file.readAsString();
+      if (existing == encoded) return;
+      throw StateError('Purchase result id already exists: ${result.id}');
+    }
+
+    final temp = File('$path/.${result.id}.json.tmp');
+    try {
+      await temp.writeAsString(encoded, flush: true);
+      await temp.rename(file.path);
+    } finally {
+      if (await temp.exists()) {
+        await temp.delete();
+      }
+    }
   }
 
   Future<PurchaseResult?> loadResult(String id) async {
@@ -38,6 +54,14 @@ class PurchaseResultStorage {
       debugPrint('PurchaseResultStorage.loadResult: $e');
       return null;
     }
+  }
+
+  Future<PurchaseResult?> loadResultForSession(String sessionId) async {
+    final results = await listResults();
+    for (final result in results) {
+      if (result.sessionId == sessionId) return result;
+    }
+    return null;
   }
 
   Future<List<PurchaseResult>> listResults() async {
