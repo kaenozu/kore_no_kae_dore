@@ -17,6 +17,9 @@ class Mc {
   static const sealedNo = 'no';
   static const dimmerYes = 'yes';
   static const dimmerNo = 'no';
+
+  static bool isResolved(String value) =>
+      value != unknown && value != userSkipped;
 }
 
 class ManualChecks {
@@ -35,18 +38,19 @@ class ManualChecks {
   });
 
   bool get isComplete =>
-      baseSize != Mc.unknown &&
-      colorTone != Mc.unknown &&
-      brightness != Mc.unknown &&
-      sealedFixture != Mc.unknown &&
-      dimmer != Mc.unknown;
+      Mc.isResolved(baseSize) &&
+      Mc.isResolved(colorTone) &&
+      Mc.isResolved(brightness) &&
+      Mc.isResolved(sealedFixture) &&
+      Mc.isResolved(dimmer);
 
+  // Backward-compatible name: skipped values are unresolved just like unknowns.
   int get unknownCount =>
-      (baseSize == Mc.unknown ? 1 : 0) +
-      (colorTone == Mc.unknown ? 1 : 0) +
-      (brightness == Mc.unknown ? 1 : 0) +
-      (sealedFixture == Mc.unknown ? 1 : 0) +
-      (dimmer == Mc.unknown ? 1 : 0);
+      (!Mc.isResolved(baseSize) ? 1 : 0) +
+      (!Mc.isResolved(colorTone) ? 1 : 0) +
+      (!Mc.isResolved(brightness) ? 1 : 0) +
+      (!Mc.isResolved(sealedFixture) ? 1 : 0) +
+      (!Mc.isResolved(dimmer) ? 1 : 0);
 
   Map<String, dynamic> toJson() => {
         'baseSize': baseSize,
